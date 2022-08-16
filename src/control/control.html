@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html style="background-color: transparent;">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Control</title>
+  <!--  <link rel="stylesheet" href="../assets/css/bulma.min.css" />-->
+  <link rel="stylesheet" href="../assets/fonts/remixicon.css"/>
+  <link rel="stylesheet" href="../assets/css/styles.css"/>
+  <script src="../assets/js/vue.js"></script>
+  <script type="text/javascript" src="control.js"></script>
+  <style>
+    #wrapper {
+      height: 200px;
+      width: 40px;
+      position: absolute;
+      top: 10px;
+      overflow: hidden;
+    }
+
+    button {
+      padding: 4px;
+      padding-top: 6px;
+      background-color: rgba(0, 0, 0, 0.67);
+      color: #6e6e6e;
+      border: none;
+      height: 40px;
+      width: 40px;
+      font-size: 22px;
+      vertical-align: center;
+      cursor: pointer;
+      margin-bottom: 4px;
+    }
+    .red{
+      color: red;
+    }
+
+    button:hover {
+      background-color: rgba(0, 0, 0, 0.80);
+    }
+  </style>
+</head>
+<body style="background-color: transparent">
+<div id="app">
+  <div id="wrapper">
+    <button class="button">
+      <i @click="recordingClicked" class="ri-stop-mini-fill" :class="{ red: isRecording}"></i>
+    </button>
+    <button class="button">
+      <i class="ri-pause-mini-fill"></i>
+    </button>
+    <button class="button">
+      <i class="ri-arrow-go-back-line"></i>
+    </button>
+    <button class="button">
+      <i class="ri-delete-bin-6-line"></i>
+    </button>
+  </div>
+</div>
+<script type="text/javascript">
+  const {createApp} = Vue
+  createApp({
+    data() {
+      return {
+        isRecording: false
+      }
+    },
+    mounted() {
+      console.log("running mounted on controls")
+      this.registerListeners()
+    },
+    methods: {
+      registerListeners() {
+        const vm = this
+        window.electron.action.on("START_RECORDING", () => {
+          console.log("received ", "START_RECORDING", "action")
+          vm.isRecording = true
+        })
+        window.electron.action.on("STOP_RECORDING", () => {
+          console.log("received ", "STOP_RECORDING", "action")
+          vm.isRecording = false
+        })
+      },
+      recordingClicked(){
+        if(this.isRecording){
+          window.electron.action.invoke("STOP_RECORDING_REQUESTED", {})
+        }else{
+          window.electron.action.invoke("START_RECORDING_REQUESTED", {})
+        }
+      }
+    }
+  }).mount("#app")
+</script>
+</body>
+</html>

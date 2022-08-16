@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <title>Menubar</title>
+  <link rel="stylesheet" href="../assets/css/bulma.min.css"/>
+  <link rel="stylesheet" href="../assets/fonts/remixicon.css"/>
+  <link rel="stylesheet" href="../assets/css/styles.css"/>
+  <script src="../assets/js/vue.js"></script>
+  <script type="text/javascript" src="menubar.js"></script>
+</head>
+<body>
+<div id="app">
+  <div class="columns p-5">
+    <div class="column has-text-centered">
+      <div class="pb-2">
+        <input @input="setServer" v-model="server" class="input" type="text" placeholder="Server">
+      </div>
+      <div class="pb-2">
+        <input @input="setEmail" v-model="email" class="input" type="text" placeholder="Email">
+      </div>
+      <div class="pb-4">
+        <input @input="setPassword" v-model="password" class="input" type="text" placeholder="Password">
+      </div>
+      <button @click="startRecordingClicked" class="button is-large is-danger is-centered is-center">
+        <i class="ri-record-circle-fill"></i>
+        &nbsp; Start recording
+      </button>
+    </div>
+  </div>
+</div>
+<script type="text/javascript">
+  const {createApp} = Vue
+  createApp({
+    data() {
+      return {
+        server: null,
+        email: null,
+        password: null,
+        isRecording: false,
+        recordedChunks: []
+      }
+    },
+    mounted() {
+      console.log("running mounted on menubar")
+      this.registerListeners()
+      this.getServer()
+      this.getEmail()
+      this.getPassword()
+    },
+    methods: {
+      async startRecording(source) {
+        console.log("starting recording on source", source)
+        let mediaRecorder
+        const vm = this
+        const constraints = {
+          audio: false,
+          video: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: source.id
+            }
+          }
+        }
+        const stream = await navigator.mediaDevices
+        .getUserMedia(constraints);
+        const options = { mimeType: 'video/webm; codecs=vp9' };
+        mediaRecorder = new MediaRecorder(stream, options);
+
+        // Register Event Handlers
+        mediaRecorder.ondataavailable = this.processStream
+        mediaRecorder.onstop = this.stopRecording;
+      },
+      processStream(e){
+        console.log('video data available');
+        this.recordedChunks.push(e.data);
+      },
+      async stopRecording(e) {
+        const blob = new Blob(this.recordedChunks, {
+          type: 'video/webm; codecs=vp9'
+        });
+
+        const buffer = window.electron.video.Buffer.from(await blob.arrayBuffer());
+        const filePath = `vid-${Date.now()}.webm`
+        console.log(filePath);
+        window.electron.fs.saveVideo(buffer);
+      },
+      registerListeners(){
+        const vm = this
+        window.electron.action.on("START_RECORDING", (event, source) => {
+          console.log("received ", "START_RECORDING", "action", source)
+          this.startRecording(source)
+          vm.isRecording = true
+        })
+        window.electron.action.on("STOP_RECORDING", () => {
+          console.log("received ", "STOP_RECORDING", "action")
+          this.stopRecording()
+          vm.isRecording = false
+        })
+      },
+      startRecordingClicked(options) {
+        window.electron.action.invoke("START_RECORDING_REQUESTED", {})
+      },
+      setServer() {
+        window.electron.store.set({key: 'server', value: this.server})
+      },
+      setEmail() {
+        window.electron.store.set({key: 'email', value: this.email})
+      },
+      setPassword() {
+        window.electron.store.set({key: 'password', value: this.password})
+      },
+      getServer() {
+        const vm = this
+        window.electron.store.get('server').then((result) => {
+          vm.server = result
+        })
+      },
+      getEmail() {
+        const vm = this
+        window.electron.store.get('email').then((result) => {
+          vm.email = result
+        })
+      },
+      getPassword() {
+        const vm = this
+        window.electron.store.get('password').then((result) => {
+          vm.password = result
+        })
+      }
+    }
+  }).mount("#app")
+</script>
+</body>
+</html>

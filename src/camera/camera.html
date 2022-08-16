@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html style="background-color: transparent;">
+<head>
+  <meta charset="UTF-8" />
+  <title>Camera</title>
+  <link rel="stylesheet" href="../assets/css/bulma.min.css" />
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+  <script src="../assets/js/vue.js"></script>
+  <script type="text/javascript" src="camera.js"></script>
+</head>
+<body>
+<div id="app">
+  <div class="video-mask" style="width: 400px;height: 400px;border-radius: 200px;overflow: hidden;">
+    <video ref="camera" autoplay></video>
+  </div>
+</div>
+<script type="text/javascript">
+  const { createApp } = Vue
+  createApp({
+    data() {
+      return {
+
+      }
+    },
+    mounted() {
+      this.createCameraElement()
+    },
+    methods: {
+      createCameraElement() {
+        console.log("creating camera element")
+        const constraints = (window.constraints = {
+          audio: false,
+          video: {
+            height: 400,
+            width: 400,
+            aspectRatio: 1,
+          }
+        });
+        navigator.mediaDevices
+        .getUserMedia(constraints)
+        .then(stream => {
+          stream.getTracks().forEach(function(track) {
+            console.log(track.getSettings());
+          })
+          this.$refs.camera.srcObject = stream;
+        })
+        .catch(error => {
+          alert("May the browser didn't support or there is some errors.");
+        });
+      },
+    }
+  }).mount('#app')
+</script>
+</body>
+</html>
+
