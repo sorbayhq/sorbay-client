@@ -1,15 +1,13 @@
 {
-  "name": "dopplr-electron",
-  "productName": "dopplr-electron",
-  "version": "1.0.0",
-  "description": "My Electron application description",
+  "name": "melon",
+  "productName": "Melon",
+  "version": "0.0.1",
+  "description": "#TODO",
   "main": "src/index.js",
+  "repository": "melonhq/melon-client",
   "scripts": {
     "start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "publish": "electron-forge publish",
-    "lint": "echo \"No linting configured\""
+    "build": "electron-builder -mw"
   },
   "keywords": [],
   "author": {
@@ -17,34 +15,38 @@
     "email": "ja.geb@me.com"
   },
   "license": "MIT",
-  "config": {
-    "forge": {
-      "packagerConfig": {},
-      "makers": [
+  "build": {
+    "appId": "to.melon",
+    "mac": {
+      "publish": [
+        "github"
+      ],
+      "target": [
         {
-          "name": "@electron-forge/maker-squirrel",
-          "config": {
-            "name": "dopplr_electron"
-          }
-        },
-        {
-          "name": "@electron-forge/maker-zip",
-          "platforms": [
-            "darwin"
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
           ]
-        },
+        }
+      ]
+    },
+    "win": {
+      "publish": [
+        "github"
+      ],
+      "target": [
         {
-          "name": "@electron-forge/maker-deb",
-          "config": {}
-        },
-        {
-          "name": "@electron-forge/maker-rpm",
-          "config": {}
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         }
       ]
     }
   },
   "dependencies": {
+    "electron-log": "^4.4.8",
     "electron-reload": "^2.0.0-alpha.1",
     "electron-squirrel-startup": "^1.0.0",
     "electron-store": "^8.1.0",

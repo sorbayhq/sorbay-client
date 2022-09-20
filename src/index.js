@@ -2,6 +2,9 @@ const {app, BrowserWindow, ipcMain, desktopCapturer} = require("electron")
 const path = require("path")
 const {menubar} = require("menubar")
 const electron = require("electron")
+const log = require('electron-log')
+
+log.warn("hey from logger")
 let mb
 let menubarWindow
 let sourceWindow
@@ -18,12 +21,12 @@ const store = new Store()
 
 ipcMain.handle("getStoreValue", (event, key) => {
   const value = store.get(key)
-  console.log("getting store value for", key, "it is", value)
+  log.debug("getting store value for", key, "it is", value)
   return value
 })
 ipcMain.handle("setStoreValue", (event, data) => {
-  console.log("received", data)
-  console.log("setting store value for", data.key, "to", data.value)
+  log.debug("received", data)
+  log.debug("setting store value for", data.key, "to", data.value)
   store.set(data.key, data.value)
 })
 // *************************************************************************************************
@@ -34,12 +37,12 @@ ipcMain.handle("setStoreValue", (event, data) => {
 // ** RECORDER SETUP
 // *************************************************************************************************
 ipcMain.handle("START_RECORDING_REQUESTED", (event) => {
-  console.log("received action (main)", "START_RECORDING_REQUESTED")
+  log.debug("received action (main)", "START_RECORDING_REQUESTED")
   desktopCapturer.getSources({ types: ['window', 'screen'] }).then(async sources => {
-    console.log("available sources are", sources)
+    log.debug("available sources are", sources)
     sources.forEach(source => {
       if(source.name === "Screen 1"){
-        console.debug("found source with name Screen 1")
+        log.debug("found source with name Screen 1")
         menubarWindow.hide()
         menubarWindow.webContents.send("START_RECORDING", source)
         controlWindow.webContents.send("START_RECORDING", source)
@@ -49,7 +52,7 @@ ipcMain.handle("START_RECORDING_REQUESTED", (event) => {
   menubarWindow.hide()
 })
 ipcMain.handle("STOP_RECORDING_REQUESTED", (event) => {
-  console.log("received action (main)", "STOP_RECORDING_REQUESTED")
+  log.debug("received action (main)", "STOP_RECORDING_REQUESTED")
   menubarWindow.hide()
   menubarWindow.webContents.send("STOP_RECORDING", {})
   controlWindow.webContents.send("STOP_RECORDING", {})
@@ -69,24 +72,25 @@ const webPreferences = {
   sandbox: false,
   nodeIntegration: true,
   preload: path.join(__dirname, "preload.js"),
-  contextIsolation: true
+  contextIsolation: false
 }
 
 const createWindows = () => {
   mb = menubar({
     index: "file://" + path.join(__dirname, "menubar/menubar.html"),
+    icon: path.join(__dirname, "assets/images/menubar/icon.png"),
     browserWindow: {
       webPreferences: webPreferences,
     }
   })
   mb.on("ready", () => {
-    console.log("app is ready")
+    log.debug("app is ready")
     // your app code here
   })
   mb.on("show", () => {
     menubarWindow = mb.window
     menubarWindow.webContents.openDevTools({mode: "detach"})
-    console.log("menubar is showing")
+    log.debug("menubar is showing")
     cameraWindow.show()
     controlWindow.show()
   })

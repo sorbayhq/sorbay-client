@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html style="background-color: transparent;">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <title>Camera</title>
-  <link rel="stylesheet" href="../assets/css/bulma.min.css" />
-  <link rel="stylesheet" href="../assets/css/styles.css" />
+  <link rel="stylesheet" href="../assets/css/bulma.min.css"/>
+  <link rel="stylesheet" href="../assets/css/styles.css"/>
   <script src="../assets/js/vue.js"></script>
   <script type="text/javascript" src="camera.js"></script>
 </head>
@@ -15,19 +15,18 @@
   </div>
 </div>
 <script type="text/javascript">
-  const { createApp } = Vue
+  const {createApp} = Vue
+  const log = require('electron-log')
   createApp({
     data() {
-      return {
-
-      }
+      return {}
     },
     mounted() {
       this.createCameraElement()
     },
     methods: {
       createCameraElement() {
-        console.log("creating camera element")
+        log.debug("creating camera element")
         const constraints = (window.constraints = {
           audio: false,
           video: {
@@ -37,16 +36,16 @@
           }
         });
         navigator.mediaDevices
-        .getUserMedia(constraints)
-        .then(stream => {
-          stream.getTracks().forEach(function(track) {
-            console.log(track.getSettings());
-          })
-          this.$refs.camera.srcObject = stream;
-        })
-        .catch(error => {
-          alert("May the browser didn't support or there is some errors.");
-        });
+            .getUserMedia(constraints)
+            .then(stream => {
+              stream.getTracks().forEach(function (track) {
+                log.debug("track settings", track.getSettings());
+              })
+              this.$refs.camera.srcObject = stream;
+            })
+            .catch(error => {
+              log.error("Unable get user media", error);
+            });
       },
     }
   }).mount('#app')

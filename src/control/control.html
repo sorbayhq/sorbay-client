@@ -58,6 +58,7 @@
 </div>
 <script type="text/javascript">
   const {createApp} = Vue
+  const log = require('electron-log')
   createApp({
     data() {
       return {
@@ -65,18 +66,18 @@
       }
     },
     mounted() {
-      console.log("running mounted on controls")
+      log.debug("running mounted on controls")
       this.registerListeners()
     },
     methods: {
       registerListeners() {
         const vm = this
         window.electron.action.on("START_RECORDING", () => {
-          console.log("received ", "START_RECORDING", "action")
+          log.debug("received ", "START_RECORDING", "action")
           vm.isRecording = true
         })
         window.electron.action.on("STOP_RECORDING", () => {
-          console.log("received ", "STOP_RECORDING", "action")
+          log.debug("received ", "STOP_RECORDING", "action")
           vm.isRecording = false
         })
       },

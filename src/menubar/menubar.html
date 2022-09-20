@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="../assets/fonts/remixicon.css"/>
   <link rel="stylesheet" href="../assets/css/styles.css"/>
   <script src="../assets/js/vue.js"></script>
+  <script src="../assets/js/axios.js"></script>
   <script type="text/javascript" src="menubar.js"></script>
 </head>
 <body>
@@ -16,118 +17,247 @@
       <div class="pb-2">
         <input @input="setServer" v-model="server" class="input" type="text" placeholder="Server">
       </div>
-      <div class="pb-2">
-        <input @input="setEmail" v-model="email" class="input" type="text" placeholder="Email">
+      <div v-if="isLoggedIn">
+        <button @click="startRecordingClicked"
+                class="button is-large is-danger is-centered is-center">
+          <i class="ri-record-circle-fill"></i>
+          &nbsp; Start recording
+        </button>
+        <video id="video"></video>
       </div>
-      <div class="pb-4">
-        <input @input="setPassword" v-model="password" class="input" type="text" placeholder="Password">
+      <div v-else>
+        <div v-if="hasStartedLoginFlow">
+            Logging in...
+        </div>
+        <div v-else>
+          <button @click="startLoginFlow" class="button is-large is-primary is-centered is-center">
+            Login
+          </button>
+        </div>
       </div>
-      <button @click="startRecordingClicked" class="button is-large is-danger is-centered is-center">
-        <i class="ri-record-circle-fill"></i>
-        &nbsp; Start recording
-      </button>
     </div>
   </div>
 </div>
 <script type="text/javascript">
+  const {writeFile, createReadStream} = require("fs")
+  const {shell} = require("electron")
   const {createApp} = Vue
+  const log = require('electron-log')
   createApp({
     data() {
       return {
         server: null,
+        isLoggedIn: false,
+        hasStartedLoginFlow: false,
         email: null,
-        password: null,
+        name: null,
+        deviceID: null,
+        apiKey: null,
         isRecording: false,
-        recordedChunks: []
+        recordedChunks: [],
+        mediaRecorder: null
       }
     },
     mounted() {
-      console.log("running mounted on menubar")
+      log.debug("running mounted on menubar")
       this.registerListeners()
-      this.getServer()
-      this.getEmail()
-      this.getPassword()
+      this.registerStoreValues()
     },
     methods: {
-      async startRecording(source) {
-        console.log("starting recording on source", source)
-        let mediaRecorder
+      startLoginFlow() {
+        log.debug("starting login flow")
+        this.hasStartedLoginFlow = true
+        this.deviceID = Array.from(Array(128), () => Math.floor(Math.random() * 36).toString(36)).join("")
+        this.setDeviceID()
+        const payload = {
+          token: this.deviceID,
+          name: "Client Name",
+          application: "Melon Desktop",
+          release: "0.0.1"
+        }
+        const encoded = btoa(JSON.stringify(payload))
+        const url = this.server + "users/device/register/" + encoded + "/"
+        log.debug("login flow continued, opening url", url, "with payload", payload)
+        shell.openExternal(url)
         const vm = this
+        const interval = setInterval(function (){
+          const apiUrl = vm.server + "api/v1/device/key/"
+          const data = {"token": vm.deviceID}
+          log.debug("querying api for api key, url", apiUrl, "with data", data)
+          axios.post(apiUrl, data).then(function (result){
+            log.debug("api call to ", apiUrl, "returned. got result", result)
+            vm.apiKey = result.data.key
+            vm.setApiKey(vm.apiKey)
+            vm.isLoggedIn = true
+            vm.setIsLoggedIn(vm.isLoggedIn)
+            clearInterval(interval)
+          })
+        }, 1000)
+      },
+      async startRecording(source) {
+        log.debug("starting recording on source", source)
         const constraints = {
           audio: false,
           video: {
             mandatory: {
-              chromeMediaSource: 'desktop',
+              chromeMediaSource: "desktop",
               chromeMediaSourceId: source.id
             }
           }
         }
-        const stream = await navigator.mediaDevices
-        .getUserMedia(constraints);
-        const options = { mimeType: 'video/webm; codecs=vp9' };
-        mediaRecorder = new MediaRecorder(stream, options);
-
+        const stream = await navigator.mediaDevices.getUserMedia(constraints)
+        const videoElement = document.getElementById("video")
+        videoElement.srcObject = stream
+        videoElement.play()
+        const options = {mimeType: "video/webm; codecs=vp9"}
+        this.mediaRecorder = new MediaRecorder(stream, options)
         // Register Event Handlers
-        mediaRecorder.ondataavailable = this.processStream
-        mediaRecorder.onstop = this.stopRecording;
+        this.mediaRecorder.ondataavailable = this.processStream
+        this.mediaRecorder.onstop = this.stopRecording
+        this.mediaRecorder.onerror = function (e) {
+          log.debug("mr error", e)
+        }
+        this.mediaRecorder.onstart = function (e) {
+          log.debug("mr start", e)
+        }
+        this.mediaRecorder.start(1000)
+        log.debug("media recorder", this.mediaRecorder)
       },
-      processStream(e){
-        console.log('video data available');
-        this.recordedChunks.push(e.data);
+      processStream(e) {
+        log.debug("video data available", e)
+        this.recordedChunks.push(e.data)
       },
       async stopRecording(e) {
+        const vm = this
         const blob = new Blob(this.recordedChunks, {
-          type: 'video/webm; codecs=vp9'
-        });
+          type: "video/webm; codecs=vp9"
+        })
 
-        const buffer = window.electron.video.Buffer.from(await blob.arrayBuffer());
-        const filePath = `vid-${Date.now()}.webm`
-        console.log(filePath);
-        window.electron.fs.saveVideo(buffer);
+        const buffer = Buffer.from(await blob.arrayBuffer())
+        log.debug("buffer is", buffer)
+        this.fileName = `vid-${Date.now()}.webm`
+        writeFile(this.fileName, buffer, () => {
+          log.debug("wrote file successfully")
+        })
+        log.debug("video saved successfully, starting upload")
+        axios.post(vm.server + "api/v1/videos/upload/", {"extension": "webm"}, {
+          headers: {
+            "X-Api-Key": vm.apiKey
+          }
+        }).then(function (response) {
+          log.debug("POST to /api/v1/videos/upload/ returned with", response.status, response.data)
+          const fileUUID = response.data["short_id"]
+          const form_data = new FormData()
+          form_data.append("key", response.data["fields"]["key"])
+          form_data.append("AWSAccessKeyId", response.data["fields"]["AWSAccessKeyId"])
+          form_data.append("policy", response.data["fields"]["policy"])
+          form_data.append("signature", response.data["fields"]["signature"])
+          form_data.append("file", blob, response.data["fields"]["key"])
+          axios.post(response.data["url"], form_data, {
+            headers: {
+              "X-Api-Key": vm.apiKey
+            }
+          }).then(function (response) {
+            log.debug("POST to S3 returned with", response.status, response.data)
+            axios.patch(vm.server + "api/v1/videos/update/" + fileUUID + "/", {}, {
+              headers: {
+                "X-Api-Key": vm.apiKey
+              }
+            }).then(function (response) {
+              log.debug("PATCH /api/v1/videos/update/" + fileUUID + "/ returned", response.status, response.data)
+              shell.openExternal(response.data.absolute_url)
+            })
+          })
+        })
       },
-      registerListeners(){
+      registerListeners() {
         const vm = this
         window.electron.action.on("START_RECORDING", (event, source) => {
-          console.log("received ", "START_RECORDING", "action", source)
+          log.debug("received ", "START_RECORDING", "action", source)
           this.startRecording(source)
           vm.isRecording = true
         })
         window.electron.action.on("STOP_RECORDING", () => {
-          console.log("received ", "STOP_RECORDING", "action")
-          this.stopRecording()
+          log.debug("received ", "STOP_RECORDING", "action")
+          this.mediaRecorder.stop()
           vm.isRecording = false
         })
+      },
+      registerStoreValues() {
+        this.getServer()
+        this.getIsLoggedIn()
+        this.getEmail()
+        this.getName()
+        this.getDeviceID()
+        this.getApiKey()
       },
       startRecordingClicked(options) {
         window.electron.action.invoke("START_RECORDING_REQUESTED", {})
       },
+      logout(){
+        this.isLoggedIn = false
+        this.setIsLoggedIn()
+        this.deviceID = ""
+        this.setDeviceID()
+        this.apiKey = ""
+        this.setApiKey()
+      },
       setServer() {
-        window.electron.store.set({key: 'server', value: this.server})
+        this.isLoggedIn = false
+        this.setIsLoggedIn()
+        window.electron.store.set({key: "server", value: this.server})
+      },
+      setIsLoggedIn() {
+        window.electron.store.set({key: "isLoggedIn", value: this.isLoggedIn})
       },
       setEmail() {
-        window.electron.store.set({key: 'email', value: this.email})
+        window.electron.store.set({key: "email", value: this.email})
       },
-      setPassword() {
-        window.electron.store.set({key: 'password', value: this.password})
+      setName() {
+        window.electron.store.set({key: "name", value: this.name})
+      },
+      setDeviceID() {
+        window.electron.store.set({key: "deviceID", value: this.deviceID})
+      },
+      setApiKey() {
+        window.electron.store.set({key: "apiKey", value: this.apiKey})
       },
       getServer() {
         const vm = this
-        window.electron.store.get('server').then((result) => {
+        window.electron.store.get("server").then((result) => {
           vm.server = result
+        })
+      },
+      getIsLoggedIn() {
+        const vm = this
+        window.electron.store.get("isLoggedIn").then((result) => {
+          vm.isLoggedIn = result
         })
       },
       getEmail() {
         const vm = this
-        window.electron.store.get('email').then((result) => {
+        window.electron.store.get("email").then((result) => {
           vm.email = result
         })
       },
-      getPassword() {
+      getName() {
         const vm = this
-        window.electron.store.get('password').then((result) => {
-          vm.password = result
+        window.electron.store.get("name").then((result) => {
+          vm.name = result
         })
-      }
+      },
+      getDeviceID() {
+        const vm = this
+        window.electron.store.get("deviceID").then((result) => {
+          vm.deviceID = result
+        })
+      },
+      getApiKey() {
+        const vm = this
+        window.electron.store.get("apiKey").then((result) => {
+          vm.apiKey = result
+        })
+      },
     }
   }).mount("#app")
 </script>
