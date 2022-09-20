@@ -19,17 +19,41 @@
   const log = require('electron-log')
   createApp({
     data() {
-      return {}
+      return {
+        selectedCameraInput: null
+      }
     },
     mounted() {
-      this.createCameraElement()
+      //this.createCameraElement()
+      this.registerListeners()
     },
     methods: {
+      registerListeners(){
+        const vm = this
+        window.electron.action.on("CHANGE_CAMERA", (event, cameraJSON) => {
+          const camera = JSON.parse(cameraJSON)
+          log.debug("received (camera)", "CHANGE_CAMERA", "action", camera)
+          if(vm.selectedCameraInput !== camera){
+            log.debug("selected camera input has changed from", vm.selectedCameraInput, "to", camera)
+            vm.selectedCameraInput = camera
+            vm.removeCameraElement()
+            console.log(camera)
+            if(camera.id !== 'off'){
+              vm.createCameraElement()
+            }
+          }
+
+        })
+      },
+      removeCameraElement(){
+        this.$refs.camera.srcObject = null;
+      },
       createCameraElement() {
-        log.debug("creating camera element")
+        log.debug("creating camera element using", this.selectedCameraInput)
         const constraints = (window.constraints = {
           audio: false,
           video: {
+            deviceId: this.selectedCameraInput.id,
             height: 400,
             width: 400,
             aspectRatio: 1,
