@@ -13,13 +13,11 @@
       height: 200px;
       width: 40px;
       position: absolute;
-      top: 10px;
       overflow: hidden;
     }
 
     button {
-      padding: 4px;
-      padding-top: 6px;
+      /*padding-top: 6px;*/
       background-color: rgba(0, 0, 0, 0.67);
       color: #6e6e6e;
       border: none;
@@ -37,21 +35,31 @@
     button:hover {
       background-color: rgba(0, 0, 0, 0.80);
     }
+    .clock{
+      text-align: center;
+      background-color: rgba(0, 0, 0, 0.67);
+      font-size: 14px;
+      color: #6e6e6e;
+      margin-bottom: 6px;
+      padding: 2px;
+    }
   </style>
 </head>
 <body style="background-color: transparent">
 <div id="app">
   <div id="wrapper">
+    <div class="clock">
+      <span v-if="recodingHours > 0">
+        {{ recordingHours }}:</span>
+      {{ recordingMinutes }}:<span v-if="recordingSeconds < 10">0</span>{{ recordingSeconds }}
+    </div>
     <button class="button">
       <i @click="recordingClicked" class="ri-stop-mini-fill" :class="{ red: isRecording}"></i>
     </button>
-    <button class="button">
-      <i class="ri-pause-mini-fill"></i>
-    </button>
-    <button class="button">
+    <button v-if="isRecording" class="button">
       <i class="ri-arrow-go-back-line"></i>
     </button>
-    <button class="button">
+    <button v-if="isRecording" class="button">
       <i class="ri-delete-bin-6-line"></i>
     </button>
   </div>
@@ -62,7 +70,11 @@
   createApp({
     data() {
       return {
-        isRecording: false
+        isRecording: false,
+        recordingStartedAt: null,
+        recordingHours: 0,
+        recordingMinutes: 0,
+        recordingSeconds: 0,
       }
     },
     mounted() {
@@ -70,15 +82,33 @@
       this.registerListeners()
     },
     methods: {
+      updateClock(){
+        const vm = this
+        setTimeout(() => {
+          const delta = new Date() - vm.recordingStartedAt;
+          vm.recordingHours = Math.floor((delta % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          vm.recordingMinutes = Math.floor((delta % (1000 * 60 * 60)) / (1000 * 60));
+          vm.recordingSeconds = Math.floor((delta % (1000 * 60)) / 1000);
+          if(vm.isRecording){
+            vm.updateClock()
+          }
+        }, 200)
+      },
       registerListeners() {
         const vm = this
         window.electron.action.on("START_RECORDING", () => {
           log.debug("received ", "START_RECORDING", "action")
           vm.isRecording = true
+          vm.recordingStartedAt = new Date()
+          vm.updateClock()
         })
         window.electron.action.on("STOP_RECORDING", () => {
           log.debug("received ", "STOP_RECORDING", "action")
           vm.isRecording = false
+          vm.recordingStartedAt = null
+          vm.recordingHours = 0
+          vm.recordingMinutes = 0
+          vm.recordingSeconds = 0
         })
       },
       recordingClicked(){

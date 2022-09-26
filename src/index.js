@@ -4,12 +4,12 @@ const {menubar} = require("menubar")
 const electron = require("electron")
 const log = require('electron-log')
 
-log.warn("hey from logger")
 let mb
 let menubarWindow
 let sourceWindow
 let cameraWindow
 let controlWindow
+let isRecording = false
 
 require("electron-reload")(__dirname)
 
@@ -38,26 +38,24 @@ ipcMain.handle("setStoreValue", (event, data) => {
 // *************************************************************************************************
 ipcMain.handle("START_RECORDING_REQUESTED", (event) => {
     log.debug("received action (main)", "START_RECORDING_REQUESTED")
+    isRecording = true
     menubarWindow.hide()
     menubarWindow.webContents.send("START_RECORDING")
     controlWindow.webContents.send("START_RECORDING")
-    // desktopCapturer.getSources({ types: ['window', 'screen'] }).then(async sources => {
-    //   log.debug("available sources are", sources)
-    //   sources.forEach(source => {
-    //     if(source.name === "Screen 1"){
-    //       log.debug("found source with name Screen 1")
-    //
-    //     }
-    //   })
-    // })
-    // menubarWindow.hide()
+})
+// *************************************************************************************************
+// ** CHANGE_AUDIO_REQUESTED SETUP
+// *************************************************************************************************
+ipcMain.handle("CHANGE_AUDIO_REQUESTED", (event, audio) => {
+    log.debug("received action (main)", "CHANGE_AUDIO_REQUESTED")
+    menubarWindow.webContents.send("CHANGE_AUDIO", audio)
+    cameraWindow.webContents.send("CHANGE_AUDIO", audio)
 })
 // *************************************************************************************************
 // ** CHANGE_CAMERA_REQUESTED SETUP
 // *************************************************************************************************
 ipcMain.handle("CHANGE_CAMERA_REQUESTED", (event, camera) => {
     log.debug("received action (main)", "CHANGE_CAMERA_REQUESTED")
-    menubarWindow.hide()
     menubarWindow.webContents.send("CHANGE_CAMERA", camera)
     cameraWindow.webContents.send("CHANGE_CAMERA", camera)
 })
@@ -66,7 +64,6 @@ ipcMain.handle("CHANGE_CAMERA_REQUESTED", (event, camera) => {
 // *************************************************************************************************
 ipcMain.handle("CHANGE_SCREEN_REQUESTED", (event, camera) => {
     log.debug("received action (main)", "CHANGE_CAMERA_REQUESTED")
-    menubarWindow.hide()
     menubarWindow.webContents.send("CHANGE_SCREEN", camera)
     cameraWindow.webContents.send("CHANGE_SCREEN", camera)
 })
@@ -77,22 +74,15 @@ ipcMain.handle("GET_SCREEN_INPUTS", (event) => {
     log.debug("received action (main)", "GET_SCREEN_INPUTS")
     desktopCapturer.getSources({types: ['screen']}).then(async sources => {
         menubarWindow.send("SET_SCREEN_SOURCES", sources)
-        // sources.forEach(source => {
-        //   if(source.name === "Screen 1"){
-        //     log.debug("found source with name Screen 1")
-        //     menubarWindow.hide()
-        //     menubarWindow.webContents.send("START_RECORDING", source)
-        //     controlWindow.webContents.send("START_RECORDING", source)
-        //   }
-        // })
     })
-    // menubarWindow.hide()
 })
 ipcMain.handle("STOP_RECORDING_REQUESTED", (event) => {
     log.debug("received action (main)", "STOP_RECORDING_REQUESTED")
-    menubarWindow.hide()
+    isRecording = false
     menubarWindow.webContents.send("STOP_RECORDING", {})
     controlWindow.webContents.send("STOP_RECORDING", {})
+    cameraWindow.hide()
+    controlWindow.hide()
 })
 // *************************************************************************************************
 // ** END RECORDER SETUP
@@ -130,14 +120,26 @@ const createWindows = () => {
         // your app code here
     })
     mb.on("show", () => {
-        menubarWindow = mb.window
-        menubarWindow.webContents.openDevTools({mode: "detach"})
         log.debug("menubar is showing")
+        menubarWindow = mb.window
+        //menubarWindow.webContents.openDevTools({mode: "detach"})
         cameraWindow.show()
         controlWindow.show()
     })
+    mb.on("hide", () => {
+        log.debug("menubar is hiding", "isRecording?", isRecording)
+        if(!isRecording){
+            cameraWindow.hide()
+            controlWindow.hide()
+        }
+    })
 
     const display = electron.screen.getPrimaryDisplay()
+    log.debug("primary display is", display)
+    log.debug("primary display height", display.bounds.height)
+    log.debug("primary display width", display.bounds.width)
+    log.debug("y", display.bounds.height - 400 - 10)
+    log.debug("x", 10)
     // Create the browser window.
     cameraWindow = new BrowserWindow({
         frame: false,
@@ -160,7 +162,14 @@ const createWindows = () => {
     cameraWindow.loadFile(path.join(__dirname, "camera/camera.html"))
     // Open the DevTools.
     cameraWindow.webContents.openDevTools({mode: "detach"})
-
+    cameraWindow.on("show", () => {
+        log.debug("camera is showing")
+        cameraWindow.webContents.send("SHOW_CAMERA", {})
+    })
+    cameraWindow.on("hide", () => {
+        log.debug("camera is hiding")
+        cameraWindow.webContents.send("HIDE_CAMERA", {})
+    })
     // Create the browser window.
     controlWindow = new BrowserWindow({
         frame: false,
@@ -174,9 +183,10 @@ const createWindows = () => {
         hasShadow: false,
         backgroundColor: "#00000000",
         x: 0,
-        y: display.bounds.height / 2 - 150,
-        width: 50,
-        height: 300,
+        //y: display.bounds.height / 2 - 300,
+        y: 400,
+        width: 48,
+        height: 170,
         webPreferences: webPreferences,
     })
     // and load the index.html of the app.
@@ -214,6 +224,7 @@ app.on("ready", createWindows)
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
+    log.debug("called window-all-closed")
     if (process.platform !== "darwin") {
         log.debug("quitting applicaton")
         app.quit()

@@ -22,7 +22,8 @@
         <div class="control">
           <div class="select">
             <select @change="changeScreenSelected($event)">
-              <option v-bind:value="screenDevice.id" v-for="screenDevice in availableScreenInputs" :selected="screenDevice === selectedScreenInput">
+              <option v-bind:value="screenDevice.id" v-for="screenDevice in availableScreenInputs"
+                      :selected="screenDevice === selectedScreenInput">
                 {{ screenDevice.label }}
               </option>
             </select>
@@ -33,8 +34,9 @@
         <div class="label">Audio</div>
         <div class="control">
           <div class="select">
-            <select>
-              <option v-for="audioDevice in availableAudioInputs" :selected="audioDevice === selectedAudioInput">
+            <select @change="changeAudioSelected($event)">
+              <option v-bind:value="audioDevice.id" v-for="audioDevice in availableAudioInputs"
+                      :selected="selectedAudioInput !== null && audioDevice.id === selectedAudioInput.id">
                 {{ audioDevice.label }}
               </option>
             </select>
@@ -47,7 +49,8 @@
         <div class="control">
           <div class="select">
             <select @change="changeCameraSelected($event)">
-              <option v-bind:value="cameraDevice.id" v-for="cameraDevice in availableCameraInputs" :selected="cameraDevice === selectedCameraInput">
+              <option :value="cameraDevice.id" v-bind:value="cameraDevice.id" v-for="cameraDevice in availableCameraInputs"
+                      :selected="selectedCameraInput !== null && cameraDevice.id === selectedCameraInput.id">
                 {{ cameraDevice.label }}
               </option>
             </select>
@@ -76,10 +79,10 @@
   </div>
 </div>
 <script type="text/javascript">
-  const {writeFile, createReadStream, existsSync, mkdirSync} = require("fs")
-  const {desktopCapturer, shell} = require("electron")
+  const {writeFile, existsSync, mkdirSync} = require("fs")
+  const {shell} = require("electron")
   const {createApp} = Vue
-  const log = require('electron-log')
+  const log = require("electron-log")
   createApp({
     data() {
       return {
@@ -93,11 +96,16 @@
         isRecording: false,
         recordingStartedAt: null,
         videoID: null,
+        videoPublicUrl: null,
+        videoAbsoluteUrl: null,
         recordedChunks: [],
         mediaRecorder: null,
         selectedScreenInput: null,
+        lastSelectedScreenInputId: null,
         selectedAudioInput: null,
+        lastSelectedAudioInputId: null,
         selectedCameraInput: null,
+        lastSelectedCameraInputId: null,
         availableScreenInputs: [],
         availableAudioInputs: [],
         availableCameraInputs: [],
@@ -112,8 +120,8 @@
     methods: {
       loadUserInputs() {
         const vm = this
-        this.availableAudioInputs = [{label: "Off", id: 'off'}]
-        this.availableCameraInputs = [{label: "Off", id: 'off'}]
+        this.availableAudioInputs = [{label: "Off", id: "off"}]
+        this.availableCameraInputs = [{label: "Off", id: "off"}]
         window.electron.action.invoke("GET_SCREEN_INPUTS", {})
         navigator.mediaDevices.enumerateDevices().then((devices) => {
           devices.forEach((device) => {
@@ -125,13 +133,18 @@
               }
               if (device.kind === "audioinput") {
                 vm.availableAudioInputs.push(item)
-                if (device.deviceId === "default") {
+                if(vm.lastSelectedAudioInputId === item.id){
+                  log.debug("setting audio input to last selected audio input", item)
                   vm.selectedAudioInput = item
+                  window.electron.action.invoke("CHANGE_AUDIO_REQUESTED", JSON.stringify(item))
                 }
               } else if (device.kind === "videoinput") {
                 vm.availableCameraInputs.push(item)
-                vm.selectedCameraInput = item
-                window.electron.action.invoke("CHANGE_CAMERA_REQUESTED", JSON.stringify(item))
+                if(vm.lastSelectedCameraInputId === item.id){
+                  log.debug("setting camera input to last selected camera input", item)
+                  vm.selectedCameraInput = item
+                  window.electron.action.invoke("CHANGE_CAMERA_REQUESTED", JSON.stringify(item))
+                }
               }
             }
           })
@@ -173,129 +186,161 @@
       },
       async startRecording() {
         log.debug("starting recording on source", this.selectedScreenInput, "with audio", this.selectedAudioInput)
-        this.videoID = Array.from(Array(16), () => Math.floor(Math.random() * 36).toString(36)).join("")
-        this.isRecording = true
-        this.recordingStartedAt = (new Date()).getTime()
-        const constraints = {
-          audio: {
-            deviceId: {exact: 'd9560b810c208f7fdf8219e8766b77caa4cc433e59eb39ea532fa3dd89e1d984'}
-          },
-          video: {
-            mandatory: {
-              chromeMediaSource: "desktop",
-              chromeMediaSourceId: this.selectedScreenInput.id
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+              mandatory: {
+                chromeMediaSource: "desktop",
+                chromeMediaSourceId: this.selectedScreenInput.id
+              }
             }
+          })
+          try {
+            const audioStream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                mandatory: {
+                  chromeMediaSourceId: this.selectedAudioInput.id
+                }
+              },
+              video: false
+            })
+            const audioTracks = audioStream.getAudioTracks()
+
+            // merge audio and video tracks
+            if (audioTracks.length > 0) {
+              stream.addTrack(audioTracks[0])
+            }
+            try {
+              const response = await axios.post(this.server + "api/v1/videos/upload/", {"name": "Video Name"}, {
+                headers: {
+                  "X-Api-Key": this.apiKey
+                }
+              })
+              log.debug("POST to", this.server + "api/v1/videos/upload/", "returned with status", response.status, "data", response.data)
+              if (response.status !== 201) {
+                log.debug("POST to", this.server + "api/v1/videos/upload/", "had the wrong status code", response.status, "data", response.data)
+                alert(`There was an error communicating with the backend, status code is ${response.status}. [Error Code 23]`)
+                window.electron.action.invoke("STOP_RECORDING_REQUESTED", {})
+                return
+              }
+              this.videoID = response.data["short_id"]
+              this.videoPublicUrl = response.data["public_url"]
+              this.videoAbsoluteUrl = response.data["absolute_url"]
+              log.debug("Successfully started streams & got the video ready in the backend. the video id is", this.videoID, "public url will be", this.videoPublicUrl)
+              this.isRecording = true
+              this.recordingStartedAt = (new Date()).getTime()
+              this.recordedChunks = []
+              this.recordVideoChunk(stream, 0)
+
+            } catch (err) {
+              log.debug("POST to", this.server + "api/v1/videos/upload/", "threw an error", err)
+              window.electron.action.invoke("STOP_RECORDING_REQUESTED", {})
+              alert(`There was an error communicating with the backend. [Error Code 22]`)
+            }
+          } catch (err) {
+            log.debug("Unable to start audio stream", err)
+            window.electron.action.invoke("STOP_RECORDING_REQUESTED", {})
+            alert("There was an error starting the audio stream. [Error Code 15]")
           }
+        } catch (err) {
+          log.debug("Unable to start video stream", err)
+          window.electron.action.invoke("STOP_RECORDING_REQUESTED", {})
+          alert("There was an error starting the video stream. [Error Code 14]")
         }
-        const stream = await navigator.mediaDevices.getUserMedia(constraints)
-        this.recordedChunks = []
-        this.recordVideoChunk(stream, 0)
-        // const videoElement = document.getElementById("video")
-        // videoElement.srcObject = stream
-        // videoElement.play()
-        // const options = {mimeType: "video/webm; codecs=vp9"}
-        // this.mediaRecorder = new MediaRecorder(stream, options)
-        // Register Event Handlers
-        // this.mediaRecorder.ondataavailable = this.processStream
-        // this.mediaRecorder.onstop = this.stopRecording
-        // this.mediaRecorder.onerror = function (e) {
-        //   log.debug("mr error", e)
-        // }
-        // this.mediaRecorder.onstart = function (e) {
-        //   log.debug("mr start", e)
-        // }
-        // this.mediaRecorder.start(1000)
-        // log.debug("media recorder", this.mediaRecorder)
       },
       recordVideoChunk(stream, n) {
         const vm = this
         let startTime = null
-        this.mediaRecorder = new MediaRecorder(stream, {mimeType: "video/webm; codecs=vp8"});
+        this.mediaRecorder = new MediaRecorder(stream, {mimeType: "video/webm; codecs=vp8"})
 
         this.mediaRecorder.ondataavailable = function (e) {
-          vm.recordedChunks.push(e.data);
-        };
+          vm.recordedChunks.push(e.data)
+        }
 
         this.mediaRecorder.onstart = function () {
           startTime = (new Date()).getTime()
         }
         this.mediaRecorder.onstop = function () {
-          const actualChunks = vm.recordedChunks.splice(0, vm.recordedChunks.length);
+          const actualChunks = vm.recordedChunks.splice(0, vm.recordedChunks.length)
           const duration = startTime - (new Date()).getTime()
-          const blob = new Blob(actualChunks, {type: "video/webm; codecs=vp8"});
+          const blob = new Blob(actualChunks, {type: "video/webm; codecs=vp8"})
           log.debug("measured duration", (new Date()).getTime() - vm.recordingStartedAt)
-          vm.uploadVideoPart(blob, n, duration); // Upload to server
-        };
+          vm.processVideoPart(blob, n, duration) // Upload to server
+        }
 
         if (this.isRecording) {
-          vm.mediaRecorder.start();
+          vm.mediaRecorder.start()
           setTimeout(function () {
-            console.log(vm.mediaRecorder.state)
-            vm.mediaRecorder.stop();
-            vm.recordVideoChunk(stream, n + 1);
-          }, 5000); // 5 seconds videos
+            //if (!vm.mediaRecorder.state === "inactive") {
+            vm.mediaRecorder.stop()
+            //}
+            vm.recordVideoChunk(stream, n + 1)
+          }, 5000) // 5 seconds videos
         }
       },
-      async uploadVideoPart(blob, n, duration) {
-        const currentTime = (new Date()).getTime()
+      processVideoPart(blob, n, duration) {
+        const fileName = `chunk-${n}.webm`
+        this.uploadVideoPart(blob, n, fileName)
+        this.saveVideoPart(blob, n, fileName)
+      },
+      async saveVideoPart(blob, n, filename) {
         const directory = `recordings/${this.videoID}`
         if (!existsSync(directory)) {
-          mkdirSync(directory);
+          mkdirSync(directory)
         }
-        const fileName = `${directory}/chunk-${n}.webm`
+        const fullPath = `${directory}/${filename}`
         const buffer = Buffer.from(await blob.arrayBuffer())
-        writeFile(fileName, buffer, () => {
-          log.debug("Successfully wrote ", fileName, "duration", duration)
+        writeFile(fullPath, buffer, () => {
+          log.debug("Successfully wrote ", fullPath)
         })
       },
-      processStream(e) {
-        // log.debug("video data available", e)
-        // this.recordedChunks.push(e.data)
+      async uploadVideoPart(blob, n, filename) {
+        let url = this.server + "api/v1/videos/chunk/" + this.videoID + "/"
+        try {
+          let response = await axios.post(url, {
+            "name": filename,
+            "position": n
+          }, {
+            headers: {
+              "X-Api-Key": this.apiKey
+            }
+          })
+          if (response.status !== 201) {
+            log.error("There was an error POSTing to", url, ". status code", response.status, "data", response.data)
+            return
+          }
+          log.debug("Successfully POSTed to", url, response.status, response.data)
+          const form_data = new FormData()
+          const s3URL = response.data["url"]
+          form_data.append("key", response.data["fields"]["key"])
+          form_data.append("AWSAccessKeyId", response.data["fields"]["AWSAccessKeyId"])
+          form_data.append("policy", response.data["fields"]["policy"])
+          form_data.append("signature", response.data["fields"]["signature"])
+          form_data.append("file", blob, response.data["fields"]["key"])
+          try {
+            response = axios.post(s3URL, form_data, {
+              headers: {
+                "X-Api-Key": this.apiKey
+              }
+            })
+            log.debug("Successfully POSTed to", s3URL, response.status, response.data)
+          } catch (err) {
+            log.error("There was an error POSTing to ", s3URL, err)
+          }
+        } catch (err) {
+          log.error("There was an error POSTing to", url, err)
+        }
       },
       async stopRecording(e) {
         this.isRecording = false
         this.mediaRecorder.stop()
-        // const vm = this
-        // const blob = new Blob(this.recordedChunks, {
-        //   type: "video/webm; codecs=vp9"
-        // })
-        //
-        // const buffer = Buffer.from(await blob.arrayBuffer())
-        // log.debug("buffer is", buffer)
-        // this.fileName = `vid-${Date.now()}.webm`
-        // writeFile(this.fileName, buffer, () => {
-        //   log.debug("wrote file successfully")
-        // })
-        // log.debug("video saved successfully, starting upload")
-        // axios.post(vm.server + "api/v1/videos/upload/", {"extension": "webm"}, {
-        //   headers: {
-        //     "X-Api-Key": vm.apiKey
-        //   }
-        // }).then(function (response) {
-        //   log.debug("POST to /api/v1/videos/upload/ returned with", response.status, response.data)
-        //   const fileUUID = response.data["short_id"]
-        //   const form_data = new FormData()
-        //   form_data.append("key", response.data["fields"]["key"])
-        //   form_data.append("AWSAccessKeyId", response.data["fields"]["AWSAccessKeyId"])
-        //   form_data.append("policy", response.data["fields"]["policy"])
-        //   form_data.append("signature", response.data["fields"]["signature"])
-        //   form_data.append("file", blob, response.data["fields"]["key"])
-        //   axios.post(response.data["url"], form_data, {
-        //     headers: {
-        //       "X-Api-Key": vm.apiKey
-        //     }
-        //   }).then(function (response) {
-        //     log.debug("POST to S3 returned with", response.status, response.data)
-        //     axios.patch(vm.server + "api/v1/videos/update/" + fileUUID + "/", {}, {
-        //       headers: {
-        //         "X-Api-Key": vm.apiKey
-        //       }
-        //     }).then(function (response) {
-        //       log.debug("PATCH /api/v1/videos/update/" + fileUUID + "/ returned", response.status, response.data)
-        //       shell.openExternal(response.data.absolute_url)
-        //     })
-        //   })
-        // })
+        const response = axios.patch(this.server + "api/v1/videos/update/" + this.videoID + "/", {}, {
+          headers: {
+            "X-Api-Key": this.apiKey
+          }
+        })
+        shell.openExternal(this.videoAbsoluteUrl)
       },
       registerListeners() {
         const vm = this
@@ -333,22 +378,39 @@
           log.debug("(menubar) received ", "CHANGE_SCREEN", "action", screen)
           vm.changeScreen(screen)
         })
+        window.electron.action.on("CHANGE_AUDIO", (event, audioJSON) => {
+          const audio = JSON.parse(audioJSON)
+          log.debug("(menubar) received ", "CHANGE_AUDIO", "action", audio)
+          vm.changeAudio(audio)
+        })
+      },
+      changeAudioSelected(event) {
+        const audio = this.availableAudioInputs.find(x => x.id === event.target.value)
+        this.lastSelectedAudioInputId = audio.id
+        this.setLastSelectedAudioInputId()
+        window.electron.action.invoke("CHANGE_AUDIO_REQUESTED", JSON.stringify(audio))
       },
       changeCameraSelected(event) {
         const camera = this.availableCameraInputs.find(x => x.id === event.target.value)
+        this.lastSelectedCameraInputId = camera.id
+        this.setLastSelectedCameraInputId()
         window.electron.action.invoke("CHANGE_CAMERA_REQUESTED", JSON.stringify(camera))
       },
       changeScreenSelected(event) {
         const screen = this.availableScreenInputs.find(x => x.id === event.target.value)
         window.electron.action.invoke("CHANGE_SCREEN_REQUESTED", JSON.stringify(screen))
       },
-      changeCamera(camera){
+      changeCamera(camera) {
         log.debug("changing selected camera to", camera)
         this.selectedCameraInput = camera
       },
-      changeScreen(screen){
+      changeScreen(screen) {
         log.debug("changing selected screen to", screen)
         this.selectedScreenInput = screen
+      },
+      changeAudio(audio) {
+        log.debug("changing selected audio to", audio)
+        this.selectedAudioInput = audio
       },
       registerStoreValues() {
         this.getServer()
@@ -357,6 +419,9 @@
         this.getName()
         this.getDeviceID()
         this.getApiKey()
+        this.getLastSelectedAudioInputId()
+        this.getLastSelectedCameraInputId()
+        this.getLastSelectedScreenInputId()
       },
       startRecordingClicked(options) {
         window.electron.action.invoke("START_RECORDING_REQUESTED", {})
@@ -386,6 +451,15 @@
       },
       setApiKey() {
         window.electron.store.set({key: "apiKey", value: this.apiKey})
+      },
+      setLastSelectedCameraInputId() {
+        window.electron.store.set({key: "lastSelectedCameraInputId", value: this.lastSelectedCameraInputId})
+      },
+      setLastSelectedAudioInputId() {
+        window.electron.store.set({key: "lastSelectedAudioInputId", value: this.lastSelectedAudioInputId})
+      },
+      setLastSelectedScreenInputId() {
+        window.electron.store.set({key: "lastSelectedScreenInputId", value: this.lastSelectedScreenInputId})
       },
       getServer() {
         const vm = this
@@ -421,6 +495,24 @@
         const vm = this
         window.electron.store.get("apiKey").then((result) => {
           vm.apiKey = result
+        })
+      },
+      getLastSelectedCameraInputId() {
+        const vm = this
+        window.electron.store.get("lastSelectedCameraInputId").then((result) => {
+          vm.lastSelectedCameraInputId = result
+        })
+      },
+      getLastSelectedAudioInputId() {
+        const vm = this
+        window.electron.store.get("lastSelectedAudioInputId").then((result) => {
+          vm.lastSelectedAudioInputId = result
+        })
+      },
+      getLastSelectedScreenInputId() {
+        const vm = this
+        window.electron.store.get("lastSelectedScreenInputId").then((result) => {
+          vm.lastSelectedScreenInputId = result
         })
       },
     }

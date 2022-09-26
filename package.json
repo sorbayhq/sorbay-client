@@ -6,7 +6,7 @@
   "main": "src/index.js",
   "repository": "melonhq/melon-client",
   "scripts": {
-    "start": "electron-forge start",
+    "start": "electron .",
     "build": "electron-builder -mw"
   },
   "keywords": [],
