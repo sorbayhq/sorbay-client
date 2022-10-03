@@ -49,7 +49,8 @@
         <div class="control">
           <div class="select">
             <select @change="changeCameraSelected($event)">
-              <option :value="cameraDevice.id" v-bind:value="cameraDevice.id" v-for="cameraDevice in availableCameraInputs"
+              <option :value="cameraDevice.id" v-bind:value="cameraDevice.id"
+                      v-for="cameraDevice in availableCameraInputs"
                       :selected="selectedCameraInput !== null && cameraDevice.id === selectedCameraInput.id">
                 {{ cameraDevice.label }}
               </option>
@@ -83,6 +84,7 @@
   const {shell} = require("electron")
   const {createApp} = Vue
   const log = require("electron-log")
+  const activeWindow = require("active-win")
   createApp({
     data() {
       return {
@@ -94,8 +96,8 @@
         deviceID: null,
         apiKey: null,
         isRecording: false,
-        recordingStartedAt: null,
         videoID: null,
+        videoName: null,
         videoPublicUrl: null,
         videoAbsoluteUrl: null,
         recordedChunks: [],
@@ -133,14 +135,14 @@
               }
               if (device.kind === "audioinput") {
                 vm.availableAudioInputs.push(item)
-                if(vm.lastSelectedAudioInputId === item.id){
+                if (vm.lastSelectedAudioInputId === item.id) {
                   log.debug("setting audio input to last selected audio input", item)
                   vm.selectedAudioInput = item
                   window.electron.action.invoke("CHANGE_AUDIO_REQUESTED", JSON.stringify(item))
                 }
               } else if (device.kind === "videoinput") {
                 vm.availableCameraInputs.push(item)
-                if(vm.lastSelectedCameraInputId === item.id){
+                if (vm.lastSelectedCameraInputId === item.id) {
                   log.debug("setting camera input to last selected camera input", item)
                   vm.selectedCameraInput = item
                   window.electron.action.invoke("CHANGE_CAMERA_REQUESTED", JSON.stringify(item))
@@ -184,6 +186,26 @@
           })
         }, 1000)
       },
+      // async setVideoName() {
+      //   const window = await activeWindow()
+      //   log.debug("setting video name, currently active window is", window)
+      //   const url = this.server + "api/v1/videos/update/" + this.videoID + "/"
+      //   try{
+      //
+      //   const response = await axios.patch(url, {"name": window.title}, {
+      //     headers: {
+      //       "X-Api-Key": this.apiKey
+      //     }
+      //   })
+      //     if(response.status !== 202){
+      //       log.error("There was an error sending a PATCH request to", url, "status code is", response.status, response)
+      //     }else{
+      //       log.debug("Successfully send PATCH request to", url, response)
+      //     }
+      //   }catch (err){
+      //     log.error("There was an error sending a PATCH request to", url, err)
+      //   }
+      // },
       async startRecording() {
         log.debug("starting recording on source", this.selectedScreenInput, "with audio", this.selectedAudioInput)
         try {
@@ -212,7 +234,13 @@
               stream.addTrack(audioTracks[0])
             }
             try {
-              const response = await axios.post(this.server + "api/v1/videos/upload/", {"name": "Video Name"}, {
+              const vm = this
+              setTimeout(async function (){
+                const window = await activeWindow()
+                vm.videoName = window.title
+                log.debug("Setting video name to", vm.videoName)
+              }, 5000)
+              const response = await axios.post(this.server + "api/v1/videos/upload/", {}, {
                 headers: {
                   "X-Api-Key": this.apiKey
                 }
@@ -229,7 +257,6 @@
               this.videoAbsoluteUrl = response.data["absolute_url"]
               log.debug("Successfully started streams & got the video ready in the backend. the video id is", this.videoID, "public url will be", this.videoPublicUrl)
               this.isRecording = true
-              this.recordingStartedAt = (new Date()).getTime()
               this.recordedChunks = []
               this.recordVideoChunk(stream, 0)
 
@@ -252,7 +279,7 @@
       recordVideoChunk(stream, n) {
         const vm = this
         let startTime = null
-        this.mediaRecorder = new MediaRecorder(stream, {mimeType: "video/webm; codecs=vp8"})
+        this.mediaRecorder = new MediaRecorder(stream, {mimeType: "video/webm; codecs=H264"})
 
         this.mediaRecorder.ondataavailable = function (e) {
           vm.recordedChunks.push(e.data)
@@ -263,10 +290,8 @@
         }
         this.mediaRecorder.onstop = function () {
           const actualChunks = vm.recordedChunks.splice(0, vm.recordedChunks.length)
-          const duration = startTime - (new Date()).getTime()
-          const blob = new Blob(actualChunks, {type: "video/webm; codecs=vp8"})
-          log.debug("measured duration", (new Date()).getTime() - vm.recordingStartedAt)
-          vm.processVideoPart(blob, n, duration) // Upload to server
+          const blob = new Blob(actualChunks, {type: "video/webm; codecs=H264"})
+          vm.processVideoPart(blob, n) // Upload to server
         }
 
         if (this.isRecording) {
@@ -279,7 +304,7 @@
           }, 5000) // 5 seconds videos
         }
       },
-      processVideoPart(blob, n, duration) {
+      processVideoPart(blob, n) {
         const fileName = `chunk-${n}.webm`
         this.uploadVideoPart(blob, n, fileName)
         this.saveVideoPart(blob, n, fileName)
@@ -297,50 +322,54 @@
       },
       async uploadVideoPart(blob, n, filename) {
         let url = this.server + "api/v1/videos/chunk/" + this.videoID + "/"
+        const form_data = new FormData()
+        form_data.append("name", filename)
+        form_data.append("position", n)
+        form_data.append("data", blob, "data")
         try {
-          let response = await axios.post(url, {
-            "name": filename,
-            "position": n
-          }, {
+          let response = await axios.post(url, form_data, {
             headers: {
               "X-Api-Key": this.apiKey
             }
           })
-          if (response.status !== 201) {
+          if (response.status !== 200) {
             log.error("There was an error POSTing to", url, ". status code", response.status, "data", response.data)
             return
           }
           log.debug("Successfully POSTed to", url, response.status, response.data)
-          const form_data = new FormData()
-          const s3URL = response.data["url"]
-          form_data.append("key", response.data["fields"]["key"])
-          form_data.append("AWSAccessKeyId", response.data["fields"]["AWSAccessKeyId"])
-          form_data.append("policy", response.data["fields"]["policy"])
-          form_data.append("signature", response.data["fields"]["signature"])
-          form_data.append("file", blob, response.data["fields"]["key"])
-          try {
-            response = axios.post(s3URL, form_data, {
-              headers: {
-                "X-Api-Key": this.apiKey
-              }
-            })
-            log.debug("Successfully POSTed to", s3URL, response.status, response.data)
-          } catch (err) {
-            log.error("There was an error POSTing to ", s3URL, err)
-          }
         } catch (err) {
           log.error("There was an error POSTing to", url, err)
         }
       },
       async stopRecording(e) {
+        log.debug("stopping video recording")
         this.isRecording = false
         this.mediaRecorder.stop()
-        const response = axios.patch(this.server + "api/v1/videos/update/" + this.videoID + "/", {}, {
-          headers: {
-            "X-Api-Key": this.apiKey
+        if(this.videoName === null){
+          const window = await activeWindow()
+          this.videoName = window.title
+        }
+        const url = this.server + "api/v1/videos/update/" + this.videoID + "/"
+        const payload = {"is_uploaded": true, "name": window.title}
+        try {
+          const response = await axios.patch(url, payload, {
+            headers: {
+              "X-Api-Key": this.apiKey
+            }
+          })
+          if(response.status !== 202){
+            log.error("There was an error sending a PATCH request to", url, response.status, response.data)
+          }else{
+            log.debug("Successfully send PATCH request to", url, response)
           }
-        })
+        }catch (err){
+
+        }
         shell.openExternal(this.videoAbsoluteUrl)
+        this.videoName = null
+        this.videoID = null
+        this.videoAbsoluteUrl = null
+        this.videoPublicUrl = null
       },
       registerListeners() {
         const vm = this
@@ -453,13 +482,22 @@
         window.electron.store.set({key: "apiKey", value: this.apiKey})
       },
       setLastSelectedCameraInputId() {
-        window.electron.store.set({key: "lastSelectedCameraInputId", value: this.lastSelectedCameraInputId})
+        window.electron.store.set({
+          key: "lastSelectedCameraInputId",
+          value: this.lastSelectedCameraInputId
+        })
       },
       setLastSelectedAudioInputId() {
-        window.electron.store.set({key: "lastSelectedAudioInputId", value: this.lastSelectedAudioInputId})
+        window.electron.store.set({
+          key: "lastSelectedAudioInputId",
+          value: this.lastSelectedAudioInputId
+        })
       },
       setLastSelectedScreenInputId() {
-        window.electron.store.set({key: "lastSelectedScreenInputId", value: this.lastSelectedScreenInputId})
+        window.electron.store.set({
+          key: "lastSelectedScreenInputId",
+          value: this.lastSelectedScreenInputId
+        })
       },
       getServer() {
         const vm = this

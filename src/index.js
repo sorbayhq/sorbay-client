@@ -113,7 +113,8 @@ const createWindows = () => {
         icon: path.join(__dirname, "assets/images/menubar/icon.png"),
         browserWindow: {
             webPreferences: webPreferences,
-        }
+        },
+        showDockIcon: false
     })
     mb.on("ready", () => {
         log.debug("app is ready")
