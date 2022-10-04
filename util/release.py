@@ -15,7 +15,7 @@ print("commiting, tagging & pushing release..")
 subprocess.run("git checkout master", shell=True)
 subprocess.run("git add .", shell=True)
 subprocess.run(f"git commit -a -m 'new release {data['version']}'", shell=True)
-subprocess.run(f"git tag v{data['version']}", shell=True)
+subprocess.run(f"git tag {data['version']}", shell=True)
 subprocess.run("git push origin master --tags", shell=True)
 
 print("creating github release")

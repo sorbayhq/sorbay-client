@@ -1,7 +1,7 @@
 {
   "name": "sorbay",
   "productName": "Sorbay",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "#TODO",
   "main": "src/index.js",
   "repository": "sorbayhq/sorbay-client",
