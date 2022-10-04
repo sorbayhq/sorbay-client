@@ -1,7 +1,7 @@
 {
   "name": "sorbay",
   "productName": "Sorbay",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "description": "#TODO",
   "main": "src/index.js",
   "repository": "sorbayhq/sorbay-client",
@@ -17,7 +17,7 @@
   },
   "build": {
     "appId": "io.sorbay",
-    "afterSign": "node_modules/electron-builder-notarize",
+    "afterSign": "electron-builder-notarize",
     "mac": {
       "publish": [
         "github"
@@ -50,6 +50,7 @@
   },
   "dependencies": {
     "active-win": "^7.7.2",
+    "electron-builder": "^23.3.3",
     "electron-log": "^4.4.8",
     "electron-reload": "^2.0.0-alpha.1",
     "electron-squirrel-startup": "^1.0.0",
