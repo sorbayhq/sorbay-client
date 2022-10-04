@@ -1,7 +1,7 @@
 {
   "name": "sorbay",
   "productName": "Sorbay",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "#TODO",
   "main": "src/index.js",
   "repository": "sorbayhq/sorbay-client",
@@ -29,7 +29,11 @@
             "arm64"
           ]
         }
-      ]
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "win": {
       "publish": [
