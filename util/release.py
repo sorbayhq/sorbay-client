@@ -19,7 +19,7 @@ subprocess.run(f"git tag {data['version']}", shell=True)
 subprocess.run("git push origin master --tags", shell=True)
 
 print("creating github release")
-subprocess.run(f"gh release --repo sorbayhq/sorbay-client create v{data['version']} --title 'v{data['version']}' --notes 'release {data['version']}'", shell=True)
+subprocess.run(f"gh release --repo sorbayhq/sorbay-client create v{data['version']} --title '{data['version']}' --notes 'release {data['version']}'", shell=True)
 
 print("building & publishing artifacts")
 subprocess.run("yarn release", shell=True)
