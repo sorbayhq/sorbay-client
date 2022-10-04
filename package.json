@@ -1,6 +1,6 @@
 {
   "name": "sorbay",
-  "productName": "Melon",
+  "productName": "Sorbay",
   "version": "0.0.5",
   "description": "#TODO",
   "main": "src/index.js",
@@ -8,7 +8,7 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder -mw",
-    "release": "electron-builder -mw --publish onTag"
+    "release": "electron-builder -mw --publish always"
   },
   "keywords": [],
   "author": {
