@@ -21,8 +21,5 @@ subprocess.run("git push origin master --tags", shell=True)
 print("creating github release")
 subprocess.run(f"gh release --repo sorbayhq/sorbay-client create v0.0.1 --title 'v{data['version']}' --notes 'release {data['version']}'", shell=True)
 
-print("building application")
-subprocess.run("yarn build", shell=True)
-
-print("publishing artifacts")
-subprocess.run("electron-builder --publish", shell=True)
+print("building & publishing artifacts")
+subprocess.run("yarn release", shell=True)

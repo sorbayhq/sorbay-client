@@ -7,7 +7,8 @@
   "repository": "sorbayhq/sorbay-client",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder -mw"
+    "build": "electron-builder -mw",
+    "release": "electron-builder -mw --publish onTag"
   },
   "keywords": [],
   "author": {
