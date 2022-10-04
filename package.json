@@ -1,10 +1,10 @@
 {
-  "name": "melon",
+  "name": "sorbay",
   "productName": "Melon",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "#TODO",
   "main": "src/index.js",
-  "repository": "melonhq/melon-client",
+  "repository": "sorbayhq/sorbay-client",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder -mw"
@@ -12,11 +12,10 @@
   "keywords": [],
   "author": {
     "name": "Jannis Gebauer",
-    "email": "ja.geb@me.com"
+    "email": "jannis@sorbay.io"
   },
-  "license": "MIT",
   "build": {
-    "appId": "to.melon",
+    "appId": "io.sorbay",
     "mac": {
       "publish": [
         "github"
@@ -54,11 +53,6 @@
     "menubar": "^9.2.1"
   },
   "devDependencies": {
-    "@electron-forge/cli": "^6.0.0-beta.65",
-    "@electron-forge/maker-deb": "^6.0.0-beta.65",
-    "@electron-forge/maker-rpm": "^6.0.0-beta.65",
-    "@electron-forge/maker-squirrel": "^6.0.0-beta.65",
-    "@electron-forge/maker-zip": "^6.0.0-beta.65",
     "electron": "20.0.2"
   }
 }

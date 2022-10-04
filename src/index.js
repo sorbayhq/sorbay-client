@@ -3,6 +3,8 @@ const path = require("path")
 const {menubar} = require("menubar")
 const electron = require("electron")
 const log = require('electron-log')
+const VERSION = require("./../package.json").version
+log.debug("Starting Sorbay Desktop client using version", VERSION)
 
 let mb
 let menubarWindow

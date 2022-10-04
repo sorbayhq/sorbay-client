@@ -85,6 +85,7 @@
   const {createApp} = Vue
   const log = require("electron-log")
   const activeWindow = require("active-win")
+  const VERSION = require("./../../package.json").version
   createApp({
     data() {
       return {
@@ -164,8 +165,8 @@
         const payload = {
           token: this.deviceID,
           name: "Client Name",
-          application: "Melon Desktop",
-          release: "0.0.1"
+          application: "Sorbay Desktop",
+          release: VERSION
         }
         const encoded = btoa(JSON.stringify(payload))
         const url = this.server + "users/device/register/" + encoded + "/"
