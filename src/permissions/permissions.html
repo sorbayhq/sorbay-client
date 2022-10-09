@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Permissions required to run Sorbay</title>
+  <link rel="stylesheet" href="../assets/css/bulma.min.css"/>
+  <link rel="stylesheet" href="../assets/fonts/remixicon.css"/>
+  <link rel="stylesheet" href="../assets/css/styles.css"/>
+  <script src="../assets/js/vue.js"></script>
+</head>
+<body>
+<div id="app">
+  <div class="notification is-success" style="border-radius: 0;">
+    Sorbay records your screen and optionally your camera and microphone once you hit the <strong>record</strong>
+    button. Please grant all the following
+    permissions to use Sorbay.
+  </div>
+  <div class="pl-3 pr-3">
+    <div class="permission-box" style="">
+      <div>
+        <h3 class="subtitle mb-3">Screen</h3>
+        <p>Sorbay records your screen once you hit the record button.</p>
+      </div>
+    </div>
+    <div class="permissions-button">
+      <i class="ri-check-fill is-success" v-if="perms !== null && perms.screen === 'granted'"></i>
+      <button @click="grantPermissionClicked('screen')" class="button is-danger"
+              v-if="perms !== null && perms.screen === 'denied'">request
+      </button>
+    </div>
+  </div>
+  <hr/>
+  <div class="pl-3 pr-3">
+    <div class="permission-box" style="">
+      <div>
+        <h3 class="subtitle mb-3">Camera</h3>
+        <p>Sorbay optionally records your camera to display an overlay while you are recording.</p>
+      </div>
+    </div>
+    <div class="permissions-button">
+      <i class="ri-check-fill is-success" v-if="perms !== null && perms.camera === 'granted'"></i>
+      <button @click="grantPermissionClicked('camera')" class="button is-danger"
+              v-if="perms !== null && perms.camera === 'denied'">request
+      </button>
+    </div>
+  </div>
+  <hr/>
+  <div class="pl-3 pr-3">
+    <div class="permission-box" style="">
+      <div>
+        <h3 class="subtitle mb-3">Microphone</h3>
+        <p>Sorbay optionally records your microphone so that you can talk while you are
+          recording.</p>
+      </div>
+    </div>
+    <div class="permissions-button">
+      <i class="ri-check-fill is-success"
+         v-if="perms !== null && perms.microphone === 'granted'"></i>
+      <button @click="grantPermissionClicked('microphone')" class="button is-danger"
+              v-if="perms !== null && perms.microphone === 'denied'">request
+      </button>
+    </div>
+  </div>
+  <hr/>
+  <div class="pl-3 pr-3">
+    <p>This screen will go away once you grant permissions to all three. If one of the
+      <span class="has-text-danger">request</span> buttons is not working you might have denied one of the prior requests.
+      In this case you need to open the preference pane and grant the request by hand. <a href="#todo">Read more</a> </p>
+  </div>
+
+</div>
+<script type="text/javascript">
+  const {createApp} = Vue
+  const log = require("electron-log")
+  createApp({
+    data() {
+      return {
+        perms: null,
+      }
+    },
+    mounted() {
+      log.debug("running mounted on permissions")
+      this.registerListeners()
+    },
+    methods: {
+      grantPermissionClicked(perm) {
+        window.electron.action.invoke("REQUEST_GRANT_PERMISSION", {perm: perm})
+      },
+      registerListeners() {
+        const vm = this
+        window.electron.action.on("SET_APP_PERMISSIONS", (event, perms) => {
+          log.debug("(permissions) received ", "SET_APP_PERMISSIONS", "action", perms)
+          vm.perms = perms
+        })
+        window.electron.action.invoke("GET_APP_PERMISSIONS", {})
+      }
+    }
+  }).mount("#app")
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 {
   "name": "sorbay",
   "productName": "Sorbay",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "description": "#TODO",
   "main": "src/index.js",
   "repository": "sorbayhq/sorbay-client",
@@ -35,6 +35,12 @@
       "entitlements": "build/entitlements.mac.plist"
     },
     "win": {
+      "signingHashAlgorithms": [
+        "sha256"
+      ],
+      "publisherName": "Jannis Gebauer",
+      "signAndEditExecutable": true,
+      "verifyUpdateCodeSignature": true,
       "publish": [
         "github"
       ],
@@ -50,6 +56,7 @@
   },
   "dependencies": {
     "active-win": "^7.7.2",
+    "dotenv": "^16.0.3",
     "electron-log": "^4.4.8",
     "electron-reload": "^2.0.0-alpha.1",
     "electron-squirrel-startup": "^1.0.0",

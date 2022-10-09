@@ -83,12 +83,15 @@
   const {writeFile, existsSync, mkdirSync} = require("fs")
   const {shell} = require("electron")
   const {createApp} = Vue
+  const {actions} = require("../common/actions")
   const log = require("electron-log")
   const activeWindow = require("active-win")
+  const os = require('os')
   const VERSION = require("./../../package.json").version
   createApp({
     data() {
       return {
+        paths: null,
         server: null,
         isLoggedIn: false,
         hasStartedLoginFlow: false,
@@ -164,7 +167,7 @@
         this.setDeviceID()
         const payload = {
           token: this.deviceID,
-          name: "Client Name",
+          name: os.hostname(),
           application: "Sorbay Desktop",
           release: VERSION
         }
@@ -187,26 +190,6 @@
           })
         }, 1000)
       },
-      // async setVideoName() {
-      //   const window = await activeWindow()
-      //   log.debug("setting video name, currently active window is", window)
-      //   const url = this.server + "api/v1/videos/update/" + this.videoID + "/"
-      //   try{
-      //
-      //   const response = await axios.patch(url, {"name": window.title}, {
-      //     headers: {
-      //       "X-Api-Key": this.apiKey
-      //     }
-      //   })
-      //     if(response.status !== 202){
-      //       log.error("There was an error sending a PATCH request to", url, "status code is", response.status, response)
-      //     }else{
-      //       log.debug("Successfully send PATCH request to", url, response)
-      //     }
-      //   }catch (err){
-      //     log.error("There was an error sending a PATCH request to", url, err)
-      //   }
-      // },
       async startRecording() {
         log.debug("starting recording on source", this.selectedScreenInput, "with audio", this.selectedAudioInput)
         try {
@@ -302,7 +285,7 @@
             vm.mediaRecorder.stop()
             //}
             vm.recordVideoChunk(stream, n + 1)
-          }, 5000) // 5 seconds videos
+          }, 5000) // 5 second chunks
         }
       },
       processVideoPart(blob, n) {
@@ -311,9 +294,9 @@
         this.saveVideoPart(blob, n, fileName)
       },
       async saveVideoPart(blob, n, filename) {
-        const directory = `recordings/${this.videoID}`
+        const directory = `${this.paths.userData}/recordings/${this.videoID}`
         if (!existsSync(directory)) {
-          mkdirSync(directory)
+          log.debug(mkdirSync(directory, {recursive: true}))
         }
         const fullPath = `${directory}/${filename}`
         const buffer = Buffer.from(await blob.arrayBuffer())
@@ -374,16 +357,21 @@
       },
       registerListeners() {
         const vm = this
-        window.electron.action.on("START_RECORDING", () => {
-          log.debug("(menubar) received ", "START_RECORDING", "action")
+        window.electron.action.on(actions.renderer.SET_APP_PATHS, (event, paths) => {
+          log.debug("(menubar) received ", actions.renderer.SET_APP_PATHS, "action", paths)
+          vm.paths = paths
+        })
+        window.electron.action.invoke(actions.main.GET_APP_PATHS, {})
+        window.electron.action.on(actions.renderer.START_RECORDING, () => {
+          log.debug("(menubar) received ", actions.renderer.START_RECORDING, "action")
           vm.startRecording()
         })
-        window.electron.action.on("STOP_RECORDING", () => {
-          log.debug("(menubar) received ", "STOP_RECORDING", "action")
+        window.electron.action.on(actions.renderer.STOP_RECORDING, () => {
+          log.debug("(menubar) received ", actions.renderer.STOP_RECORDING, "action")
           vm.stopRecording()
         })
-        window.electron.action.on("SET_SCREEN_SOURCES", (event, sources) => {
-          log.debug("(menubar) received ", "SET_SCREEN_SOURCES", "action")
+        window.electron.action.on(actions.renderer.SET_SCREEN_SOURCES, (event, sources) => {
+          log.debug("(menubar) received ", actions.renderer.SET_SCREEN_SOURCES, "action")
           sources.forEach(source => {
             const item = {
               id: source.id,
@@ -398,19 +386,19 @@
           log.debug("available screen inputs is", vm.availableScreenInputs)
           log.debug("selected screen input is", vm.selectedScreenInput)
         })
-        window.electron.action.on("CHANGE_CAMERA", (event, cameraJSON) => {
+        window.electron.action.on(actions.renderer.CHANGE_CAMERA, (event, cameraJSON) => {
           const camera = JSON.parse(cameraJSON)
-          log.debug("(menubar) received ", "CHANGE_CAMERA", "action", camera)
+          log.debug("(menubar) received ", actions.renderer.CHANGE_CAMERA, "action", camera)
           vm.changeCamera(camera)
         })
-        window.electron.action.on("CHANGE_SCREEN", (event, screenJSON) => {
+        window.electron.action.on(actions.renderer.CHANGE_SCREEN, (event, screenJSON) => {
           const screen = JSON.parse(screenJSON)
-          log.debug("(menubar) received ", "CHANGE_SCREEN", "action", screen)
+          log.debug("(menubar) received ", actions.renderer.CHANGE_SCREEN, "action", screen)
           vm.changeScreen(screen)
         })
-        window.electron.action.on("CHANGE_AUDIO", (event, audioJSON) => {
+        window.electron.action.on(actions.renderer.CHANGE_AUDIO, (event, audioJSON) => {
           const audio = JSON.parse(audioJSON)
-          log.debug("(menubar) received ", "CHANGE_AUDIO", "action", audio)
+          log.debug("(menubar) received ", actions.renderer.CHANGE_AUDIO, "action", audio)
           vm.changeAudio(audio)
         })
       },
@@ -418,17 +406,17 @@
         const audio = this.availableAudioInputs.find(x => x.id === event.target.value)
         this.lastSelectedAudioInputId = audio.id
         this.setLastSelectedAudioInputId()
-        window.electron.action.invoke("CHANGE_AUDIO_REQUESTED", JSON.stringify(audio))
+        window.electron.action.invoke(actions.main.CHANGE_AUDIO_REQUESTED, JSON.stringify(audio))
       },
       changeCameraSelected(event) {
         const camera = this.availableCameraInputs.find(x => x.id === event.target.value)
         this.lastSelectedCameraInputId = camera.id
         this.setLastSelectedCameraInputId()
-        window.electron.action.invoke("CHANGE_CAMERA_REQUESTED", JSON.stringify(camera))
+        window.electron.action.invoke(actions.main.CHANGE_CAMERA_REQUESTED, JSON.stringify(camera))
       },
       changeScreenSelected(event) {
         const screen = this.availableScreenInputs.find(x => x.id === event.target.value)
-        window.electron.action.invoke("CHANGE_SCREEN_REQUESTED", JSON.stringify(screen))
+        window.electron.action.invoke(actions.main.CHANGE_SCREEN_REQUESTED, JSON.stringify(screen))
       },
       changeCamera(camera) {
         log.debug("changing selected camera to", camera)
@@ -469,12 +457,6 @@
       },
       setIsLoggedIn() {
         window.electron.store.set({key: "isLoggedIn", value: this.isLoggedIn})
-      },
-      setEmail() {
-        window.electron.store.set({key: "email", value: this.email})
-      },
-      setName() {
-        window.electron.store.set({key: "name", value: this.name})
       },
       setDeviceID() {
         window.electron.store.set({key: "deviceID", value: this.deviceID})

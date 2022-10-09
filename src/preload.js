@@ -2,6 +2,7 @@
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 const log = require('electron-log')
 const {ipcRenderer} = require("electron")
+const {actions} = require("./common/actions")
 window.electron =
   {
     action: {
@@ -14,14 +15,17 @@ window.electron =
         ipcRenderer.on(channel, listener)
       }
     },
+    env: {
+      DEBUG: process.env.DEBUG
+    },
     store: {
       set({key, value}) {
         log.debug("setting store value", {key, value})
-        ipcRenderer.invoke("setStoreValue", {key, value})
+        ipcRenderer.invoke(actions.main.SET_STORE_VALUE, {key, value})
       },
       async get(key) {
-        log.debug("getting store value", key)
-        return await ipcRenderer.invoke("getStoreValue", key).then((result) => {
+        log.debug("calling", actions.main.GET_STORE_VALUE, 'for key', key)
+        return await ipcRenderer.invoke(actions.main.GET_STORE_VALUE, key).then((result) => {
           return result
         })
       }

@@ -1,0 +1,20 @@
+.permission-box {
+  width: 72%;
+  height: 100px;
+  display: inline-block;
+}
+
+.permissions-button {
+  width: 28%;
+  height: 100px;
+  float: right;
+  display: inline-block;
+  padding-top: 40px;
+  padding-left: 20px;
+}
+
+.permissions-button i{
+  font-size: 30px;
+  color: green;
+  padding-left: 20px;
+}
