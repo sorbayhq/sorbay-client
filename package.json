@@ -32,7 +32,10 @@
         }
       ],
       "hardenedRuntime": true,
-      "entitlements": "build/entitlements.mac.plist"
+      "entitlements": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "LSUIElement": 1
+      }
     },
     "win": {
       "signingHashAlgorithms": [

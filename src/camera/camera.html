@@ -6,96 +6,14 @@
   <link rel="stylesheet" href="../assets/css/bulma.min.css"/>
   <link rel="stylesheet" href="../assets/css/styles.css"/>
   <script src="../assets/js/vue.js"></script>
-  <script type="text/javascript" src="camera.js"></script>
 </head>
 <body>
 <div id="app">
-  <div class="video-mask" style="width: 400px;height: 400px;border-radius: 200px;overflow: hidden;">
+  <div ref="videoMask" class="video-mask" style="width: 400px;height: 400px;border-radius: 200px;overflow: hidden;">
     <video ref="camera" autoplay></video>
   </div>
 </div>
-<script type="text/javascript">
-  const {createApp} = Vue
-  const log = require("electron-log")
-  createApp({
-    data() {
-      return {
-        selectedCameraInput: null,
-        stream: null
-      }
-    },
-    mounted() {
-      this.registerListeners()
-    },
-    methods: {
-      registerListeners() {
-        const vm = this
-        window.electron.action.on("CHANGE_CAMERA", (event, cameraJSON) => {
-          const camera = JSON.parse(cameraJSON)
-          log.debug("received (camera)", "CHANGE_CAMERA", "action", camera)
-          if (vm.selectedCameraInput !== camera) {
-            log.debug("selected camera input has changed from", vm.selectedCameraInput, "to", camera)
-            vm.selectedCameraInput = camera
-            vm.stopStream()
-            if (camera.id !== "off") {
-              vm.startStream()
-            }
-          }
-        })
-        window.electron.action.on("SHOW_CAMERA", (event) => {
-          log.debug("received (camera)", "SHOW_CAMERA", "action")
-          this.startStream()
-        })
-        window.electron.action.on("HIDE_CAMERA", (event) => {
-          log.debug("received (camera)", "HIDE_CAMERA", "action")
-          this.stopStream()
-        })
-      },
-      removeCameraElement() {
-        this.$refs.camera.srcObject = null
-      },
-      stopStream() {
-        log.debug("stopping camera stream")
-        if (this.stream !== null) {
-          this.stream.getTracks().forEach(function (track) {
-            track.stop()
-          })
-        }
-        this.removeCameraElement()
-      },
-      createCameraElement() {
-        this.$refs.camera.srcObject = this.stream
-      },
-      startStream() {
-        if (this.selectedCameraInput !== null && this.selectedCameraInput.id !== "off") {
-          log.debug("starting camera stream using", this.selectedCameraInput)
-          let vm = this
-          navigator.mediaDevices
-          .getUserMedia((window.constraints = {
-            audio: false,
-            video: {
-              deviceId: this.selectedCameraInput.id,
-              height: 400,
-              width: 400,
-              aspectRatio: 1,
-            }
-          }))
-          .then(stream => {
-            vm.stream = stream
-            vm.stream.getTracks().forEach(function (track) {
-              log.debug("track settings", track.getSettings())
-            })
-            vm.createCameraElement()
-          })
-          .catch(error => {
-            log.error("Unable get user media", error)
-          })
-        } else {
-          log.debug("won't start camera stream. selected camera is either null or the user did not select a camera")
-        }
-      }
-    }
-  }).mount("#app")
+<script type="text/javascript" src="camera.js">
 </script>
 </body>
 </html>

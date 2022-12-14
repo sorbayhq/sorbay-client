@@ -1,8 +1,8 @@
-const {BrowserWindow} = require("electron")
+const {BrowserWindow, app} = require("electron")
 const path = require("path")
 const log = require("electron-log")
 const electron = require("electron")
-const {menubar} = require("menubar")
+const {Tray} = require("electron")
 let mb
 let menubarWindow
 let sourceWindow
@@ -11,7 +11,10 @@ let controlWindow
 let permissionWindow
 let loginWindow
 let splashWindow
-let isRecording = false
+const {storeValues, getStoreValue} = require("./common/store")
+const {actions} = require("./common/actions")
+const {hasAllMediaPermissions} = require("./permissions")
+const {isLoggedIn} = require("./login")
 
 const webPreferences = {
   sandbox: false,
@@ -20,27 +23,86 @@ const webPreferences = {
   contextIsolation: false
 }
 
+/**
+ * Initializes the menubar window while also creating the corresponding
+ * Tray object.
+ *
+ * The menubar window is the 'main' window of the application, giving
+ * the user the ability to configure/start a new recording.
+ *
+ * @param display{Object} the currently active display
+ */
 const initializeMenubar = (display) => {
-  mb = menubar({
-    index: "file://" + path.join(__dirname, "menubar/menubar.html"),
-    icon: path.join(__dirname, "assets/images/menubar/icon.png"),
-    browserWindow: {
-      webPreferences: webPreferences,
-    },
-    showDockIcon: false
+  mb = new Tray(path.join(__dirname, "assets/images/menubar/icon.png"))
+  menubarWindow = new BrowserWindow({
+    frame: true,
+    transparent: false,
+    show: true,
+    resizable: false,
+    movable: true,
+    closable: true,
+    alwaysOnTop: false,
+    minimizable: false,
+    maximizable: false,
+    hasShadow: true,
+    backgroundColor: "#00000000",
+    width: 400,
+    height: 480,
+    webPreferences: webPreferences,
   })
-  mb.on("ready", () => {
-    log.debug("app is ready")
-    // your app code here
+  // and load the index.html of the app.
+  menubarWindow.loadFile(path.join(__dirname, "menubar/menubar.html"))
+  let isShowingMenubar = false
+  menubarWindow.on("close", (e) =>{
+    menubarWindow.hide()
+    e.preventDefault()
   })
-  mb.on("show", () => {
+  mb.on("click", () => {
+    if (isShowingMenubar) {
+      menubarWindow.hide()
+    } else {
+      menubarWindow.show()
+    }
+  })
+  menubarWindow.on("show", (e) => {
+    // the menubar should only show if the app has all
+    // permissions to properly record a video (looking at you macOS)
+    if(!hasAllMediaPermissions()){
+      permissionWindow.show()
+      menubarWindow.hide()
+      e.preventDefault()
+      return
+    }
+    // the menubar should only be shown if the user is logged in
+    if(!isLoggedIn()){
+      loginWindow.show()
+      menubarWindow.hide()
+      e.preventDefault()
+      return
+    }
+    isShowingMenubar = true
     log.debug("menubar is showing")
-    menubarWindow = mb.window
-    //menubarWindow.webContents.openDevTools({mode: "detach"})
+    menubarWindow.send(actions.renderer.SET_APP_PATHS, {
+      appData: app.getPath("appData"),
+      userData: app.getPath("userData"),
+      logs: app.getPath("logs"),
+      temp: app.getPath("temp"),
+      video: app.getPath("videos"),
+      crashDumps: app.getPath("crashDumps")
+    })
+    // opening the dev tools for the menubar makes it disappear, forcing you to click it again
+    // commenting it out for now until there's a better solution available. If you
+    // need the dev tools on the menubar, simply uncomment the next lines of code
+    if (process.env.DEBUG === "true") {
+      // Open the DevTools.
+      menubarWindow.webContents.openDevTools({mode: "detach"})
+    }
     cameraWindow.show()
     controlWindow.show()
   })
-  mb.on("hide", () => {
+  menubarWindow.on("hide", () => {
+    isShowingMenubar = false
+    const isRecording = getStoreValue(storeValues.IS_RECORDING)
     log.debug("menubar is hiding", "isRecording?", isRecording)
     if (!isRecording) {
       cameraWindow.hide()
@@ -48,17 +110,36 @@ const initializeMenubar = (display) => {
     }
   })
 }
+
+/**
+ * Convienence function to get access to the properly initialized
+ * Tray of the application accross the codebase.
+ * @returns {Tray} mb
+ */
 const getMenubar = () => {
   return mb
 }
 
-const initializeMenubarWindow = (display) => {
-
-}
+/**
+ * Convienence function to get access to the properly initialized
+ * menubarWindow of the application accross the codebase.
+ * @returns {BrowserWindow} menubarWindow
+ */
 const getMenubarWindow = () => {
   return menubarWindow
 }
 
+/**
+ * Initializes the source window.
+ *
+ * The source window is used if multiple displays are connected
+ * to the users computer, giving the user the choice to select
+ * and preview the correct screen for a new recording.
+ *
+ * THIS IS CURRENTLY NOT IN USE, NOT IMPLEMENTED
+ *
+ * @param display{Object} the currently active display
+ */
 const initializeSourceWindow = (display) => {
   sourceWindow = new BrowserWindow({
     frame: false,
@@ -82,10 +163,25 @@ const initializeSourceWindow = (display) => {
     sourceWindow.webContents.openDevTools({mode: "detach"})
   }
 }
+
+/**
+ * Convienence function to get access to the properly initialized
+ * sourceWindow of the application accross the codebase.
+ *
+ * @returns {BrowserWindow} sourceWindow
+ */
 const getSourceWindow = () => {
   return sourceWindow
 }
 
+/**
+ * Initializes the camera window.
+ *
+ * The camera window displays the users camera stream, based
+ * on the source the user sets in the menubar window.
+ *
+ * @param display{Object} the currently active display
+ */
 const initializeCameraWindow = (display) => {
   cameraWindow = new BrowserWindow({
     frame: false,
@@ -99,7 +195,7 @@ const initializeCameraWindow = (display) => {
     hasShadow: false,
     backgroundColor: "#00000000",
     x: 10,
-    y: display.bounds.height - 400 - 10,
+    y: display.bounds.height - 400 - 50,
     width: 400,
     height: 400,
     webPreferences: webPreferences,
@@ -112,17 +208,32 @@ const initializeCameraWindow = (display) => {
   }
   cameraWindow.on("show", () => {
     log.debug("camera is showing")
-    cameraWindow.webContents.send("SHOW_CAMERA", {})
+    cameraWindow.webContents.send(actions.renderer.SHOW_CAMERA, {})
   })
   cameraWindow.on("hide", () => {
     log.debug("camera is hiding")
-    cameraWindow.webContents.send("HIDE_CAMERA", {})
+    cameraWindow.webContents.send(actions.renderer.HIDE_CAMERA, {})
   })
 }
+
+/**
+ * Convienence function to get access to the properly initialized
+ * cameraWindow of the application accross the codebase.
+ *
+ * @returns {BrowserWindow} cameraWindow
+ */
 const getCameraWindow = () => {
   return cameraWindow
 }
 
+/**
+ * Initializes the control window.
+ *
+ * The control window gives the user quick access to start/stop/restart
+ * functionality while recording a video.
+ *
+ * @param display{Object} the currently active display
+ */
 const initializeControlWindow = (display) => {
   controlWindow = new BrowserWindow({
     frame: false,
@@ -135,11 +246,11 @@ const initializeControlWindow = (display) => {
     maximizable: false,
     hasShadow: false,
     backgroundColor: "#00000000",
-    x: 0,
+    x: 120,
     //y: display.bounds.height / 2 - 300,
-    y: 400,
-    width: 48,
-    height: 170,
+    y: display.bounds.height - 10,
+    width: 220,
+    height: 50,
     webPreferences: webPreferences,
   })
   // and load the index.html of the app.
@@ -149,10 +260,25 @@ const initializeControlWindow = (display) => {
     controlWindow.webContents.openDevTools({mode: "detach"})
   }
 }
+
+/**
+ * Convienence function to get access to the properly initialized
+ * controlWindow of the application accross the codebase.
+ *
+ * @returns {BrowserWindow} controlWindow
+ */
 const getControlWindow = () => {
   return controlWindow
 }
 
+/**
+ * Initializes the permission window.
+ *
+ * The permission window displays the permissions the user has
+ * granted to the application.
+ *
+ * @param display{Object} the currently active display
+ */
 const initializePermissionWindow = (display) => {
   permissionWindow = new BrowserWindow({
     frame: true,
@@ -163,7 +289,8 @@ const initializePermissionWindow = (display) => {
     closable: true,
     alwaysOnTop: false,
     maximizable: false,
-    hasShadow: false,
+    minimizable: false,
+    hasShadow: true,
     width: 500,
     height: 740,
     webPreferences: webPreferences,
@@ -173,9 +300,25 @@ const initializePermissionWindow = (display) => {
     permissionWindow.webContents.openDevTools({mode: "detach"})
   }
 }
+
+/**
+ * Convienence function to get access to the properly initialized
+ * permission window of the application accross the codebase.
+ *
+ * @returns {BrowserWindow} permissionWindow
+ */
 const getPermissionWindow = () => {
   return permissionWindow
 }
+
+/**
+ * Initializes the login window.
+ *
+ * The login window shows a login form, giving the user the ability
+ * to link the client to the backend service.
+ *
+ * @param display{Object} the currently active display
+ */
 const initializeLoginWindow = (display) => {
   loginWindow = new BrowserWindow({
     frame: true,
@@ -186,7 +329,8 @@ const initializeLoginWindow = (display) => {
     closable: true,
     alwaysOnTop: false,
     maximizable: false,
-    hasShadow: false,
+    minimizable: false,
+    hasShadow: true,
     width: 500,
     height: 740,
     webPreferences: webPreferences,
@@ -196,9 +340,25 @@ const initializeLoginWindow = (display) => {
     loginWindow.webContents.openDevTools({mode: "detach"})
   }
 }
+
+/**
+ * Convienence function to get access to the properly initialized
+ * login window of the application accross the codebase.
+ *
+ * @returns {BrowserWindow} loginWindow
+ */
 const getLoginWindow = () => {
   return loginWindow
 }
+
+/**
+ * Initializes the splash window.
+ *
+ * The splash window shows a countdown right before a new recording
+ * starts.
+ *
+ * @param display{Object} the currently active display
+ */
 const initializeSplashWindow = (display) => {
   splashWindow = new BrowserWindow({
     frame: true,
@@ -219,14 +379,40 @@ const initializeSplashWindow = (display) => {
     splashWindow.webContents.openDevTools({mode: "detach"})
   }
 }
+
+/**
+ * Convienence function to get access to the properly initialized
+ * splash window of the application accross the codebase.
+ *
+ * @returns {BrowserWindow} splashWindow
+ */
 const getSplashWindow = () => {
   return splashWindow
 }
 
+/**
+ * Convienence function to get access to all properly initialized
+ * windows of the application accross the codebase.
+ *
+ * @returns {Array.<BrowserWindow>}
+ */
+const getAllWindows = () => {
+  return [
+    menubarWindow,
+    sourceWindow,
+    cameraWindow,
+    permissionWindow,
+    loginWindow,
+    splashWindow
+  ]
+}
+
+/**
+ * Initializes all windows the application needs.
+ */
 const initializeWindows = () => {
   const display = electron.screen.getPrimaryDisplay()
   initializeMenubar(display)
-  initializeMenubarWindow(display)
   initializeSourceWindow(display)
   initializeCameraWindow(display)
   initializeControlWindow(display)
@@ -244,5 +430,6 @@ module.exports = {
   getControlWindow,
   getPermissionWindow,
   getLoginWindow,
-  getSplashWindow
+  getSplashWindow,
+  getAllWindows
 }

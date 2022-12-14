@@ -9,32 +9,9 @@
 </head>
 <body>
 <div id="app">
-  <div v-for="source in sources">
-    {{source}}
-  </div>
+
 </div>
-<script type="text/javascript">
-  const {createApp} = Vue
-  createApp({
-    data() {
-      return {
-        sources: []
-      }
-    },
-    mounted() {
-      this.registerListeners()
-    },
-    methods: {
-      registerListeners() {
-        const vm = this
-        window.electron.action.on("SELECT_SOURCE", (sources) => {
-          console.log("received ", "SELECT_SOURCE", "action", sources)
-          vm.sources = sources
-        })
-      }
-    }
-  }).mount("#app")
-</script>
+<script type="text/javascript" src="./source.js"></script>
 </body>
 </html>
 

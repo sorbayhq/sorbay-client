@@ -3,12 +3,12 @@ const {
   BrowserWindow,
   globalShortcut,
 } = require("electron")
-const {setupActionHandler} = require("./handler")
-const log = require("electron-log")
-const {getMediaPermissions, hasAllMediaPermissions} = require("./permissions")
-const VERSION = require("./../package.json").version
-let {initializeWindows, getPermissionWindow, getLoginWindow} = require("./windows")
 require("dotenv").config()
+const log = require("electron-log")
+const VERSION = require("./../package.json").version
+const {setupActionHandler} = require("./handler")
+let {initializeWindows} = require("./windows")
+const {initializeStore} = require("./common/store")
 log.debug("Starting Sorbay Desktop client using version", VERSION, "and env", process.env.DEBUG)
 
 // setup hot reload
@@ -28,14 +28,8 @@ const initialize = () => {
       app.quit()
     })
   }
+  initializeStore()
   initializeWindows()
-  if (process.platform === "darwin") {
-    if (!hasAllMediaPermissions()) {
-      log.debug("platform is darwin and we don't have all the permissions we need. launching permission screen")
-      //getPermissionWindow().show()
-    }
-    getLoginWindow().show()
-  }
 }
 
 // This method will be called when Electron has finished
@@ -60,6 +54,3 @@ app.on("activate", () => {
     initialize()
   }
 })
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.

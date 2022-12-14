@@ -11,7 +11,7 @@
 </head>
 <body>
 <div id="app">
-  <div class="notification is-success" style="border-radius: 0;">
+  <div class="notification is-primary" style="border-radius: 0;">
     Sorbay records your screen and optionally your camera and microphone once you hit the <strong>record</strong>
     button. Please grant all the following
     permissions to use Sorbay.
@@ -70,33 +70,6 @@
   </div>
 
 </div>
-<script type="text/javascript">
-  const {createApp} = Vue
-  const log = require("electron-log")
-  createApp({
-    data() {
-      return {
-        perms: null,
-      }
-    },
-    mounted() {
-      log.debug("running mounted on permissions")
-      this.registerListeners()
-    },
-    methods: {
-      grantPermissionClicked(perm) {
-        window.electron.action.invoke("REQUEST_GRANT_PERMISSION", {perm: perm})
-      },
-      registerListeners() {
-        const vm = this
-        window.electron.action.on("SET_APP_PERMISSIONS", (event, perms) => {
-          log.debug("(permissions) received ", "SET_APP_PERMISSIONS", "action", perms)
-          vm.perms = perms
-        })
-        window.electron.action.invoke("GET_APP_PERMISSIONS", {})
-      }
-    }
-  }).mount("#app")
-</script>
+<script type="text/javascript" src="permissions.js"></script>
 </body>
 </html>

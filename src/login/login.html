@@ -8,72 +8,50 @@
   <link rel="stylesheet" href="../assets/fonts/remixicon.css"/>
   <link rel="stylesheet" href="../assets/css/styles.css"/>
   <script src="../assets/js/vue.js"></script>
+  <script src="../assets/js/axios.js"></script>
 </head>
 <body>
 <div id="app">
   <div class="notification is-primary" style="border-radius: 0;">
-    Sorbay requires a backend service to store, organize and share your recordings. Sorbay Cloud is the easiest to get started but you can run your own
+    Sorbay requires a backend service to store, organize and share your recordings. Sorbay Cloud is
+    the easiest to get started but you can run your own
     or use the one your company provides.
   </div>
   <div class="pl-5 pr-5">
-      <div>
-        <h3 class="subtitle mb-3">Backend Service</h3>
-<!--        <p><label class="checkbox">-->
-<!--          <input type="checkbox">-->
-<!--          Use <a href="#todo">Sorbay Cloud</a> Backend Service-->
-<!--        </label></p>-->
+    <div>
+      <h3 class="subtitle mb-3">Backend Service</h3>
+      <div class="control">
+        <label class="radio">
+          <input type="radio" v-model="selectedBackend" value="cloud" :disabled="isAuthorizing">
+          Use <a target="_blank" href="https://sorbay.io/">Sorbay Cloud</a> backend service
+        </label><br/>
+        <label class="radio">
+          <input type="radio" v-model="selectedBackend" value="custom" :disabled="isAuthorizing">
+          Use custom backend service
+        </label>
+      </div>
+      <div v-if="selectedBackend=='custom'" class="field pt-2">
+        <label class="label">Backend Service URL</label>
         <div class="control">
-          <label class="radio">
-            <input type="radio" name="foobar">
-            Use <a href="#todo">Sorbay Cloud</a> backend service
-          </label><br/>
-          <label class="radio">
-            <input type="radio" name="foobar" checked>
-            Use custom backend service
-          </label>
+          <input class="input" type="text" placeholder="Backend service URL"
+                 v-model="customBackendURL" :disabled="isAuthorizing">
         </div>
-        <div class="field pt-2">
-          <label class="label">Backend Service URL</label>
-          <div class="control">
-            <input class="input" type="text" placeholder="Backend service URL">
-          </div>
-          <p class="help pt-1">Full URL to the backend service, ending with a /, e.g: https://company.com/</p>
-        </div>
+        <p class="help pt-1">Full URL to the backend service, ending with a /, e.g:
+          https://company.com/</p>
+      </div>
     </div>
   </div>
   <hr/>
   <div class="pl-5 pr-5">
-  <button class="button is-primary is-large is-fullwidth is-loading">Login</button>
+    <button class="button is-primary is-large is-fullwidth"
+            :class="{'is-loading': isAuthorizing}"
+            :disabled="isAuthorizing"
+            @click="startAuthorizationFlow">
+      Login
+    </button>
     <p class="help pt-1">Clicking on Login will open your browser to log you into Sorbay Cloud.</p>
   </div>
 </div>
-<script type="text/javascript">
-  const {createApp} = Vue
-  const log = require("electron-log")
-  createApp({
-    data() {
-      return {
-        perms: null,
-      }
-    },
-    mounted() {
-      log.debug("running mounted on permissions")
-      this.registerListeners()
-    },
-    methods: {
-      grantPermissionClicked(perm) {
-        window.electron.action.invoke("REQUEST_GRANT_PERMISSION", {perm: perm})
-      },
-      registerListeners() {
-        const vm = this
-        window.electron.action.on("SET_APP_PERMISSIONS", (event, perms) => {
-          log.debug("(permissions) received ", "SET_APP_PERMISSIONS", "action", perms)
-          vm.perms = perms
-        })
-        window.electron.action.invoke("GET_APP_PERMISSIONS", {})
-      }
-    }
-  }).mount("#app")
-</script>
+<script type="text/javascript" src="login.js"></script>
 </body>
 </html>

@@ -3,70 +3,55 @@
 <head>
   <meta charset="UTF-8"/>
   <title>Control</title>
-  <!--  <link rel="stylesheet" href="../assets/css/bulma.min.css" />-->
+  <link rel="stylesheet" href="../assets/css/bulma.min.css"/>
   <link rel="stylesheet" href="../assets/fonts/remixicon.css"/>
   <link rel="stylesheet" href="../assets/css/styles.css"/>
   <script src="../assets/js/vue.js"></script>
   <script type="text/javascript" src="control.js"></script>
   <style>
-    #wrapper {
-      height: 200px;
-      width: 40px;
-      position: absolute;
-      overflow: hidden;
-    }
-
-    button {
-      /*padding-top: 6px;*/
-      background-color: rgba(0, 0, 0, 0.67);
-      color: #6e6e6e;
-      border: none;
-      height: 40px;
-      width: 40px;
-      font-size: 22px;
-      vertical-align: center;
-      cursor: pointer;
-      margin-bottom: 4px;
-    }
-    .red{
-      color: red;
-    }
-
-    button:hover {
-      background-color: rgba(0, 0, 0, 0.80);
-    }
-    .clock{
-      text-align: center;
-      background-color: rgba(0, 0, 0, 0.67);
+    .clock {
+      display: inline-block;
       font-size: 14px;
-      color: #6e6e6e;
-      margin-bottom: 6px;
-      padding: 2px;
     }
+
+    .button.is-danger.is-outlined:hover i {
+      color: white !important;
+    }
+
+    /*.button.is-danger.is-outlined:focus i{*/
+    /*  color: white !important;*/
+    /*}*/
+
   </style>
 </head>
 <body style="background-color: transparent">
 <div id="app">
-  <div id="wrapper">
-    <div class="clock">
+  <div class="">
+    <div class="round" style="height: 10px;"></div>
+    <div class="buttons">
+      <span class="button is-small is-static">
       <span v-if="recordingHours > 0">
         {{ recordingHours }}:</span>
       {{ recordingMinutes }}:<span v-if="recordingSeconds < 10">0</span>{{ recordingSeconds }}
+    </span>
+      <span class="button is-small" :class="{ 'is-danger': isRecording, 'is-outlined': !isRecording}"
+              @click="recordingClicked">
+        <i class="ri-stop-mini-fill" :class="{ 'has-text-danger': !isRecording}"></i>
+      </span>
+      <span class="button is-small is-outlined" :disabled="!isRecording">
+        <i class="ri-arrow-go-back-line"></i>
+      </span>
+      <span class="button is-small" :disabled="!isRecording">
+        <i class="ri-delete-bin-6-line has-text-danger"></i>
+      </span>
     </div>
-    <button class="button">
-      <i @click="recordingClicked" class="ri-stop-mini-fill" :class="{ red: isRecording}"></i>
-    </button>
-    <button v-if="isRecording" class="button">
-      <i class="ri-arrow-go-back-line"></i>
-    </button>
-    <button v-if="isRecording" class="button">
-      <i class="ri-delete-bin-6-line"></i>
-    </button>
   </div>
 </div>
 <script type="text/javascript">
+  const {actions} = require("../common/actions")
+
   const {createApp} = Vue
-  const log = require('electron-log')
+  const log = require("electron-log")
   createApp({
     data() {
       return {
@@ -82,40 +67,43 @@
       this.registerListeners()
     },
     methods: {
-      updateClock(){
+      updateClock() {
         const vm = this
         setTimeout(() => {
-          const delta = new Date() - vm.recordingStartedAt;
-          vm.recordingHours = Math.floor((delta % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-          vm.recordingMinutes = Math.floor((delta % (1000 * 60 * 60)) / (1000 * 60));
-          vm.recordingSeconds = Math.floor((delta % (1000 * 60)) / 1000);
-          if(vm.isRecording){
-            vm.updateClock()
+          if (vm.isRecording) {
+            const delta = new Date() - vm.recordingStartedAt
+            vm.recordingHours = Math.floor((delta % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+            vm.recordingMinutes = Math.floor((delta % (1000 * 60 * 60)) / (1000 * 60))
+            vm.recordingSeconds = Math.floor((delta % (1000 * 60)) / 1000)
+            if (vm.isRecording) {
+              vm.updateClock()
+            }
           }
         }, 200)
       },
       registerListeners() {
         const vm = this
-        window.electron.action.on("START_RECORDING", () => {
-          log.debug("received ", "START_RECORDING", "action")
+        window.electron.action.on(actions.renderer.START_RECORDING, () => {
+          log.debug("(controls) received", actions.renderer.START_RECORDING, "action")
           vm.isRecording = true
           vm.recordingStartedAt = new Date()
           vm.updateClock()
         })
-        window.electron.action.on("STOP_RECORDING", () => {
-          log.debug("received ", "STOP_RECORDING", "action")
+        window.electron.action.on(actions.renderer.STOP_RECORDING, () => {
+          log.debug("(controls) received", actions.renderer.STOP_RECORDING, "action")
           vm.isRecording = false
           vm.recordingStartedAt = null
           vm.recordingHours = 0
           vm.recordingMinutes = 0
           vm.recordingSeconds = 0
+          log.debug("(controls) end STOP RECORRDIN ACTION", vm.isRecording, vm.recordingStartedAt, vm.recordingHours, vm.recordingMinutes, vm.recordingSeconds)
         })
       },
-      recordingClicked(){
-        if(this.isRecording){
-          window.electron.action.invoke("STOP_RECORDING_REQUESTED", {})
-        }else{
-          window.electron.action.invoke("START_RECORDING_REQUESTED", {})
+      recordingClicked() {
+        if (this.isRecording) {
+          window.electron.action.invoke(actions.main.STOP_RECORDING_REQUESTED, {})
+        } else {
+          window.electron.action.invoke(actions.main.START_RECORDING_REQUESTED, {})
         }
       }
     }
