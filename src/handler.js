@@ -1,4 +1,4 @@
-const {ipcMain, desktopCapturer,} = require("electron")
+const {app, ipcMain, desktopCapturer,} = require("electron")
 const log = require("electron-log")
 const {getMediaPermissions} = require("./permissions")
 const {
@@ -8,7 +8,8 @@ const {
   getControlWindow,
   getPermissionWindow,
   getSplashWindow,
-  getLoginWindow
+  getLoginWindow,
+  getAllWindows, getMenubarTray
 } = require("./windows")
 const {actions} = require("./common/actions")
 const {storeValues, getStoreValue, setStoreValue} = require("./common/store")
@@ -196,6 +197,30 @@ const setStoreValueHandler = (event, data) => (
 )
 
 /**
+ * Handles the QUIT_REQUESTED action
+ *
+ * Quits the app
+ */
+const quitRequested = () => (
+  handleAction(actions.main.QUIT_REQUESTED, () => {
+    app.exit()
+  })
+)
+
+/**
+ * Handles the OPEN_DEVTOOLS_REQUESTED action
+ *
+ * Opens the devtools for all windows
+ */
+const openDevToolsRequested = () => (
+  handleAction(actions.main.OPEN_DEVTOOLS_REQUESTED, () => {
+    for(const window of getAllWindows()){
+      window.webContents.openDevTools({mode: "detach"})
+    }
+  })
+)
+
+/**
  * Sets up all action handlers on main
  */
 const setupActionHandler = () => {
@@ -216,5 +241,7 @@ const setupActionHandler = () => {
   requestGrantPermissions()
   loginRequested()
   logoutRequested()
+  quitRequested()
+  openDevToolsRequested()
 }
 module.exports = {setupActionHandler}

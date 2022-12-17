@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html xmlns="http://www.w3.org/1999/html">
 <head>
   <meta charset="UTF-8"/>
   <title>New recording</title>
@@ -13,11 +13,29 @@
 <div id="app">
   <div class="notification is-primary" style="border-radius: 0;">
     <span class="">Hey <strong>{{ name }}</strong>!</span>
-    <span style="float: right;"
-       class="button is-small is-white is-outlined has-text-right"
-       @click="logoutClicked">
-      Logout
-    </span>
+    <div style="float: right;" class="dropdown is-hoverable is-right">
+      <div class="dropdown-trigger">
+        <button class="button is-small is-white is-outlined" aria-haspopup="true" aria-controls="dropdown-menu">
+          <span class="icon is-small">
+        <i class="ri-menu-line"></i>
+      </span>
+        </button>
+      </div>
+      <div class="dropdown-menu" id="dropdown-menu" role="menu">
+        <div class="dropdown-content">
+          <a @click="logoutClicked" class="dropdown-item">
+            Logout
+          </a>
+          <a @click="openDevtoolsClicked" class="dropdown-item">
+            Devtools
+          </a>
+          <hr class="dropdown-divider">
+          <a @click="quitClicked" class="dropdown-item has-text-danger">
+            Quit Sorbay
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="pl-5 pr-5">
     <div class="columns">

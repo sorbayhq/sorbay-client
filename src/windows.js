@@ -3,7 +3,7 @@ const path = require("path")
 const log = require("electron-log")
 const electron = require("electron")
 const {Tray} = require("electron")
-let mb
+let menubarTray
 let menubarWindow
 let sourceWindow
 let cameraWindow
@@ -33,7 +33,7 @@ const webPreferences = {
  * @param display{Object} the currently active display
  */
 const initializeMenubar = (display) => {
-  mb = new Tray(path.join(__dirname, "assets/images/menubar/icon.png"))
+  menubarTray = new Tray(path.join(__dirname, "assets/images/menubar/icon.png"))
   menubarWindow = new BrowserWindow({
     frame: true,
     transparent: false,
@@ -50,14 +50,18 @@ const initializeMenubar = (display) => {
     height: 480,
     webPreferences: webPreferences,
   })
+  menubarWindow.on("close", (e) =>{
+    if(menubarTray.isDestroyed()){
+      menubarWindow = null
+    }else{
+      menubarWindow.hide()
+      e.preventDefault()
+    }
+  })
   // and load the index.html of the app.
   menubarWindow.loadFile(path.join(__dirname, "menubar/menubar.html"))
   let isShowingMenubar = false
-  menubarWindow.on("close", (e) =>{
-    menubarWindow.hide()
-    e.preventDefault()
-  })
-  mb.on("click", () => {
+  menubarTray.on("click", () => {
     if (isShowingMenubar) {
       menubarWindow.hide()
     } else {
@@ -90,13 +94,6 @@ const initializeMenubar = (display) => {
       video: app.getPath("videos"),
       crashDumps: app.getPath("crashDumps")
     })
-    // opening the dev tools for the menubar makes it disappear, forcing you to click it again
-    // commenting it out for now until there's a better solution available. If you
-    // need the dev tools on the menubar, simply uncomment the next lines of code
-    if (process.env.DEBUG === "true") {
-      // Open the DevTools.
-      menubarWindow.webContents.openDevTools({mode: "detach"})
-    }
     cameraWindow.show()
     controlWindow.show()
   })
@@ -117,7 +114,7 @@ const initializeMenubar = (display) => {
  * @returns {Tray} mb
  */
 const getMenubar = () => {
-  return mb
+  return menubarTray
 }
 
 /**
@@ -156,12 +153,11 @@ const initializeSourceWindow = (display) => {
     height: 400,
     webPreferences: webPreferences,
   })
+  sourceWindow.on("close", () =>{
+    sourceWindow = null
+  })
   // and load the index.html of the app.
   sourceWindow.loadFile(path.join(__dirname, "source/source.html"))
-  if (process.env.DEBUG === "true") {
-    // Open the DevTools.
-    sourceWindow.webContents.openDevTools({mode: "detach"})
-  }
 }
 
 /**
@@ -200,12 +196,11 @@ const initializeCameraWindow = (display) => {
     height: 400,
     webPreferences: webPreferences,
   })
+  cameraWindow.on("close", () =>{
+    cameraWindow = null
+  })
   // and load the index.html of the app.
   cameraWindow.loadFile(path.join(__dirname, "camera/camera.html"))
-  if (process.env.DEBUG === "true") {
-    // Open the DevTools.
-    cameraWindow.webContents.openDevTools({mode: "detach"})
-  }
   cameraWindow.on("show", () => {
     log.debug("camera is showing")
     cameraWindow.webContents.send(actions.renderer.SHOW_CAMERA, {})
@@ -253,12 +248,11 @@ const initializeControlWindow = (display) => {
     height: 50,
     webPreferences: webPreferences,
   })
+  controlWindow.on("close", () =>{
+    controlWindow = null
+  })
   // and load the index.html of the app.
   controlWindow.loadFile(path.join(__dirname, "control/control.html"))
-  if (process.env.DEBUG === "true") {
-    // Open the DevTools.
-    controlWindow.webContents.openDevTools({mode: "detach"})
-  }
 }
 
 /**
@@ -295,10 +289,10 @@ const initializePermissionWindow = (display) => {
     height: 740,
     webPreferences: webPreferences,
   })
+  permissionWindow.on("close", () =>{
+    permissionWindow = null
+  })
   permissionWindow.loadFile(path.join(__dirname, "permissions/permissions.html"))
-  if (process.env.DEBUG === "true") {
-    permissionWindow.webContents.openDevTools({mode: "detach"})
-  }
 }
 
 /**
@@ -335,10 +329,10 @@ const initializeLoginWindow = (display) => {
     height: 740,
     webPreferences: webPreferences,
   })
+  loginWindow.on("close", () =>{
+    loginWindow = null
+  })
   loginWindow.loadFile(path.join(__dirname, "login/login.html"))
-  if (process.env.DEBUG === "true") {
-    loginWindow.webContents.openDevTools({mode: "detach"})
-  }
 }
 
 /**
@@ -374,10 +368,10 @@ const initializeSplashWindow = (display) => {
     height: 740,
     webPreferences: webPreferences,
   })
+  splashWindow.on("close", () =>{
+    splashWindow = null
+  })
   splashWindow.loadFile(path.join(__dirname, "splash/splash.html"))
-  if (process.env.DEBUG === "true") {
-    splashWindow.webContents.openDevTools({mode: "detach"})
-  }
 }
 
 /**
@@ -391,6 +385,16 @@ const getSplashWindow = () => {
 }
 
 /**
+ * Convienence function to get access to the properly initialized
+ * menubar tray of the application accross the codebase.
+ *
+ * @returns {Tray} menubarTray
+ */
+const getMenubarTray = () => {
+  return menubarTray
+}
+
+/**
  * Convienence function to get access to all properly initialized
  * windows of the application accross the codebase.
  *
@@ -401,9 +405,10 @@ const getAllWindows = () => {
     menubarWindow,
     sourceWindow,
     cameraWindow,
+    controlWindow,
     permissionWindow,
+    splashWindow,
     loginWindow,
-    splashWindow
   ]
 }
 
@@ -431,5 +436,6 @@ module.exports = {
   getPermissionWindow,
   getLoginWindow,
   getSplashWindow,
-  getAllWindows
+  getAllWindows,
+  getMenubarTray
 }

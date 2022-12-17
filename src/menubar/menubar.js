@@ -417,5 +417,11 @@ createApp({
     logoutClicked() {
       window.electron.action.invoke(actions.main.LOGOUT_REQUESTED, {})
     },
+    quitClicked() {
+      window.electron.action.invoke(actions.main.QUIT_REQUESTED, {})
+    },
+    openDevtoolsClicked() {
+      window.electron.action.invoke(actions.main.OPEN_DEVTOOLS_REQUESTED, {})
+    },
   }
 }).mount("#app")

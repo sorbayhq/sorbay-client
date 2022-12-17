@@ -42,7 +42,6 @@ app.on("ready", initialize)
 // explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    log.debug("quitting applicaton")
     app.quit()
   }
 })
