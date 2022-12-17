@@ -1,4 +1,7 @@
 ![Sorbay Logo](logo.png "Sorbay Logo")
+<p align="center" width="100%">
+    <img width="33%" src="logo.png">
+</p>
 # About
 
 Sorbay is an Open Source alternative to Loom. It allows you to quickly create and share
