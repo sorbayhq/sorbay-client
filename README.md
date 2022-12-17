@@ -1,9 +1,8 @@
-![Sorbay Logo](logo.png "Sorbay Logo")
 <p align="center" width="100%">
     <img width="33%" src="logo.png">
 </p>
-# About
 
+# About
 Sorbay is an Open Source alternative to Loom. It allows you to quickly create and share
 screen- and camera recordings. The project consists of two parts: The 
 [backend](https://github.com/sorbayhq/sorbay) service to store, organize and share recordings and 
