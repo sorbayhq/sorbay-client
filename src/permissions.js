@@ -10,7 +10,7 @@ const { platform } = require('node:process')
  * @returns {{camera: String, microphone: String, screen: String}}
  */
 const getMediaPermissions = () => {
-  if (platform !== 'win32' || platform !== 'darwin')
+  if (platform !== 'win32' && platform !== 'darwin')
     return {camera: "granted", microphone: "granted", screen: "granted"}
   
   const types = ["camera", "microphone", "screen"]
