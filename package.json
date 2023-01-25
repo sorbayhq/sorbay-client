@@ -58,7 +58,7 @@
     }
   },
   "dependencies": {
-    "active-win": "^7.7.2",
+    "active-win": "^8.0.3",
     "dotenv": "^16.0.3",
     "electron-log": "^4.4.8",
     "electron-reload": "^2.0.0-alpha.1",
