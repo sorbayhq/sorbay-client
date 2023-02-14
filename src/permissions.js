@@ -24,12 +24,20 @@ const getMediaPermissions = () => {
 
 /**
  * Checks if the user has all needed media permissions set.
- *
+ * 
+ * Except for the screen,
+ * if a media permission is set to 'not-determined',
+ * meaning the user doesn't have the hardware of that media,
+ * or the hardware is not detected,
+ * then it is then ignored.
+ * 
  * @returns {boolean} true if all permissions are set correctly
  */
 const hasAllMediaPermissions = () => {
   const perms = getMediaPermissions()
-  return perms['camera'] === 'granted' && perms['microphone'] === "granted" && perms['screen'] === "granted"
+  return (perms['camera'] === 'granted' || perms['camera'] === 'not-determined')
+      && (perms['microphone'] === 'granted' || perms['microphone'] === 'not-determined')
+      && perms['screen'] === 'granted'
 }
 
 module.exports = {getMediaPermissions, hasAllMediaPermissions}
