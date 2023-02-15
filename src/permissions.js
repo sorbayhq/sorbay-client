@@ -20,7 +20,9 @@ const getMediaPermissions = () => {
     perms[type] = systemPreferences.getMediaAccessStatus(type)
     if( platform === 'darwin' && (type === 'camera' || type === 'microphone')){
       // let that as (perm[type] !== 'granted') for now
-      if(perms[type] !== 'granted') systemPreferences.askForMediaAccess(type)
+      if(perms[type] !== 'granted') {
+        systemPreferences.askForMediaAccess(type)
+      }
     }
   }
   return perms
