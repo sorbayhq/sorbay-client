@@ -31,7 +31,8 @@ createApp({
       this.isAuthorizing = true
       // set up the payload to start the auth flow in the browser window
       const deviceID = Array.from(Array(128), () => Math.floor(Math.random() * 36).toString(36)).join("")
-      const server = this.selectedBackend === "cloud" ? "https://sorbay.io/" : this.customBackendURL
+      let server = this.selectedBackend === "cloud" ? "https://sorbay.io/" : this.customBackendURL
+      server += server.endsWith("/") ? "" : "/"
       const payload = {
         token: deviceID,
         name: os.hostname(),
