@@ -35,9 +35,12 @@ const getMediaPermissions = () => {
  */
 const hasAllMediaPermissions = () => {
   const perms = getMediaPermissions()
-  return (perms['camera'] === 'granted' || perms['camera'] === 'not-determined')
-      && (perms['microphone'] === 'granted' || perms['microphone'] === 'not-determined')
-      && perms['screen'] === 'granted'
+  if( platform === 'darwin' ){
+    // let that as (perm[mediaType] !== 'granted') for now
+    if(perms['camera'] !== 'granted') systemPreferences.askForMediaAccess('camera')
+    if(perms['microphone'] !== 'granted') systemPreferences.askForMediaAccess('microphone')
+  }
+  return perms['camera'] === 'granted' && perms['microphone'] === 'granted' && perms['screen'] === "granted"
 }
 
 module.exports = {getMediaPermissions, hasAllMediaPermissions}
