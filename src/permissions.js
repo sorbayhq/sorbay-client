@@ -18,6 +18,10 @@ const getMediaPermissions = () => {
   const perms = {}
   for (const type of types) {
     perms[type] = systemPreferences.getMediaAccessStatus(type)
+    if( platform === 'darwin' && type !== 'screen'){
+      // let that as (perm[type] !== 'granted') for now
+      if(perms[type] !== 'granted') systemPreferences.askForMediaAccess(type)
+    }
   }
   return perms
 }
@@ -35,11 +39,6 @@ const getMediaPermissions = () => {
  */
 const hasAllMediaPermissions = () => {
   const perms = getMediaPermissions()
-  if( platform === 'darwin' ){
-    // let that as (perm[mediaType] !== 'granted') for now
-    if(perms['camera'] !== 'granted') systemPreferences.askForMediaAccess('camera')
-    if(perms['microphone'] !== 'granted') systemPreferences.askForMediaAccess('microphone')
-  }
   return perms['camera'] === 'granted' && perms['microphone'] === 'granted' && perms['screen'] === "granted"
 }
 
