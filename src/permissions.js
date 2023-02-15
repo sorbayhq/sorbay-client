@@ -18,18 +18,30 @@ const getMediaPermissions = () => {
   const perms = {}
   for (const type of types) {
     perms[type] = systemPreferences.getMediaAccessStatus(type)
+    if( platform === 'darwin' && (type === 'camera' || type === 'microphone')){
+      // let that as (perm[type] !== 'granted') for now
+      if(perms[type] !== 'granted') {
+        systemPreferences.askForMediaAccess(type)
+      }
+    }
   }
   return perms
 }
 
 /**
  * Checks if the user has all needed media permissions set.
- *
+ * 
+ * Except for the screen,
+ * if a media permission is set to 'not-determined',
+ * meaning the user doesn't have the hardware of that media,
+ * or the hardware is not detected,
+ * then it is then ignored.
+ * 
  * @returns {boolean} true if all permissions are set correctly
  */
 const hasAllMediaPermissions = () => {
   const perms = getMediaPermissions()
-  return perms['camera'] === 'granted' && perms['microphone'] === "granted" && perms['screen'] === "granted"
+  return perms['camera'] === 'granted' && perms['microphone'] === 'granted' && perms['screen'] === "granted"
 }
 
 module.exports = {getMediaPermissions, hasAllMediaPermissions}

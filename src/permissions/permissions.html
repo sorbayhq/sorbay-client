@@ -25,6 +25,7 @@
     </div>
     <div class="permissions-button">
       <i class="ri-check-fill is-success" v-if="perms !== null && perms.screen === 'granted'"></i>
+      <i class="ri-question-line is-black" v-if="perms !== null && perms.screen === 'not-determined'"></i>
       <button @click="grantPermissionClicked('screen')" class="button is-danger"
               v-if="perms !== null && perms.screen === 'denied'">request
       </button>
@@ -40,6 +41,7 @@
     </div>
     <div class="permissions-button">
       <i class="ri-check-fill is-success" v-if="perms !== null && perms.camera === 'granted'"></i>
+      <i class="ri-question-line is-black" v-if="perms !== null && perms.camera === 'not-determined'"></i>
       <button @click="grantPermissionClicked('camera')" class="button is-danger"
               v-if="perms !== null && perms.camera === 'denied'">request
       </button>
@@ -57,6 +59,7 @@
     <div class="permissions-button">
       <i class="ri-check-fill is-success"
          v-if="perms !== null && perms.microphone === 'granted'"></i>
+      <i class="ri-question-line is-black" v-if="perms !== null && perms.microphone === 'not-determined'"></i>
       <button @click="grantPermissionClicked('microphone')" class="button is-danger"
               v-if="perms !== null && perms.microphone === 'denied'">request
       </button>
