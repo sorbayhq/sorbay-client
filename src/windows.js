@@ -15,6 +15,7 @@ const {storeValues, getStoreValue} = require("./common/store")
 const {actions} = require("./common/actions")
 const {hasAllMediaPermissions} = require("./permissions")
 const {isLoggedIn} = require("./login")
+const { platform } = require("node:process")
 
 const webPreferences = {
   sandbox: false,
@@ -191,7 +192,7 @@ const initializeCameraWindow = (display) => {
     hasShadow: false,
     backgroundColor: "#00000000",
     x: 10,
-    y: display.bounds.height - 400 - 50,
+    y: display.workAreaSize.height - 400 - 50,
     width: 400,
     height: 400,
     webPreferences: webPreferences,
@@ -230,6 +231,10 @@ const getCameraWindow = () => {
  * @param display{Object} the currently active display
  */
 const initializeControlWindow = (display) => {
+  let offset = 10
+  if( platform === 'win32' ){
+    offset = 60
+  }
   controlWindow = new BrowserWindow({
     frame: false,
     transparent: true,
@@ -243,7 +248,7 @@ const initializeControlWindow = (display) => {
     backgroundColor: "#00000000",
     x: 120,
     //y: display.bounds.height / 2 - 300,
-    y: display.bounds.height - 10,
+    y: display.workAreaSize.height - offset,
     width: 220,
     height: 50,
     webPreferences: webPreferences,
