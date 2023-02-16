@@ -21,6 +21,8 @@ After hitting *Request* on the screen's permission, you should get this pop up:
 ![Screen's permission under MacOS](screenshots/macos/screen_permission.png)
 
 Click on *Open System Preferences* and allow Sorbay to record your screen.
-You should at last, get this final result that looks like this:
+You should at last get this final result that looks like this:
 
 ![All media devices are allowed](screenshots/macos/request_window_case_success.png)
+
+Finally close Sorbay and reopen it, you can now record videos as you like.
