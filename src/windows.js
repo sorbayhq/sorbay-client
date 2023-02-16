@@ -34,7 +34,7 @@ const webPreferences = {
  * @param display{Object} the currently active display
  */
 const initializeMenubar = (display) => {
-  menubarTray = new Tray(path.join(__dirname, "assets/images/menubar/icon.png"))
+  menubarTray = new Tray(path.join(__dirname, "/assets/images/menubar/icon.png"))
   menubarWindow = new BrowserWindow({
     frame: true,
     transparent: false,
@@ -50,6 +50,7 @@ const initializeMenubar = (display) => {
     width: 400,
     height: 480,
     webPreferences: webPreferences,
+    icon: path.join(__dirname, "/assets/images/menubar/icon.png"),
   })
   menubarWindow.on("close", (e) =>{
     if(menubarTray.isDestroyed()){
@@ -153,6 +154,7 @@ const initializeSourceWindow = (display) => {
     width: 400,
     height: 400,
     webPreferences: webPreferences,
+    icon: path.join(__dirname, "/assets/images/menubar/icon.png"),
   })
   sourceWindow.on("close", () =>{
     sourceWindow = null
@@ -196,6 +198,7 @@ const initializeCameraWindow = (display) => {
     width: 400,
     height: 400,
     webPreferences: webPreferences,
+    icon: path.join(__dirname, "/assets/images/menubar/icon.png"),
   })
   cameraWindow.on("close", () =>{
     cameraWindow = null
@@ -252,6 +255,7 @@ const initializeControlWindow = (display) => {
     width: 220,
     height: 50,
     webPreferences: webPreferences,
+    icon: path.join(__dirname, "/assets/images/menubar/icon.png"),
   })
   controlWindow.on("close", () =>{
     controlWindow = null
@@ -293,6 +297,7 @@ const initializePermissionWindow = (display) => {
     width: 500,
     height: 740,
     webPreferences: webPreferences,
+    icon: path.join(__dirname, "/assets/images/menubar/icon.png"),
   })
   permissionWindow.on("close", () =>{
     permissionWindow = null
@@ -333,6 +338,7 @@ const initializeLoginWindow = (display) => {
     width: 500,
     height: 740,
     webPreferences: webPreferences,
+    icon: path.join(__dirname, "/assets/images/menubar/icon.png"),
   })
   loginWindow.on("close", () =>{
     loginWindow = null
@@ -372,6 +378,7 @@ const initializeSplashWindow = (display) => {
     width: 500,
     height: 740,
     webPreferences: webPreferences,
+    icon: path.join(__dirname, "/assets/images/menubar/icon.png"),
   })
   splashWindow.on("close", () =>{
     splashWindow = null
