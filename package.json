@@ -19,6 +19,7 @@
     "appId": "io.sorbay",
     "afterSign": "electron-builder-notarize",
     "mac": {
+      "icon": "src/assets/images/menubar/icon.icns",
       "publish": [
         "github"
       ],
@@ -73,6 +74,7 @@
   "devDependencies": {
     "electron": "20.0.2",
     "electron-builder": "^23.3.3",
-    "electron-builder-notarize": "^1.5.0"
+    "electron-builder-notarize": "^1.5.0",
+    "electron-packager": "^17.1.1"
   }
 }
