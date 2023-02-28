@@ -9,11 +9,6 @@ screen- and camera recordings. The project consists of two parts: The
 the client (this project) for Windows, macOS and Linux to do the actual recordings.
 
 ## Setup
-If you just want to run the client, download it 
-[here](https://github.com/sorbayhq/sorbay-client/releases). We have binaries for Windows and macOS. 
-Linux is planned.
-
-## Setup for development
 
 First, clone the repository to your local machine.
 ```shell
@@ -29,6 +24,10 @@ yarn start
 The app should open and greet you with a login screen. Once you fill in the URL to your 
 [backend](https://github.com/sorbayhq/sorbay) service, you should be able to do your first 
 recording.
+
+## Binaries
+We produce binaries for macOS and Windows but given the state of the project, they are currently a hit-or miss. You can download them 
+[here](https://github.com/sorbayhq/sorbay-client/tags).
 
 ## State of the project
 
