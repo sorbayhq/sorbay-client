@@ -38,4 +38,4 @@ and then add more and more features later on.
 ## Help, bugs & discussion
 If you encounter any bugs up an issue in this repository. If you need help or want to chat about
 the project, join our 
-[Slack](https://join.slack.com/t/sorbay/shared_invite/zt-1m3nio46o-ERrjXDNgSLr_ToklzUfFtw) channel.
+[Slack](https://join.slack.com/t/slack-oso6527/shared_invite/zt-1qd8gm543-KGdb5gD4WqikZEKEk8sSTA) channel.
