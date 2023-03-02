@@ -1,3 +1,7 @@
+::-webkit-scrollbar {
+  display: none;
+}
+
 .permission-box {
   width: 72%;
   height: 100px;
