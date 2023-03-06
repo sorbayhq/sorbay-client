@@ -29,6 +29,11 @@ recording.
 We produce binaries for macOS and Windows but given the state of the project, they are currently a hit-or miss. You can download them 
 [here](https://github.com/sorbayhq/sorbay-client/tags).
 
+## Leave a star
+Consider leaving a star on the [sorbayhq/sorbay](https://github.com/sorbayhq/sorbay) repository if you think what we are building is 
+useful or might be useful at some point. We are in our very early stages and we don't
+collect any telemetry. Getting a star is the only viable metric for us to gauge interest.
+
 ## State of the project
 
 Sorbay is in its very early stages. Consider it an alpha that shouldn't be running in
