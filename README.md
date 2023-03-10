@@ -3,7 +3,7 @@
 </p>
 
 # About
-Sorbay is an open source asynchronous video communication. It allows you to quickly create and share
+Sorbay is an open source asynchronous video communication tool. It allows you to quickly create and share
 screen- and camera recordings. The project consists of two parts: The 
 [backend](https://github.com/sorbayhq/sorbay) service to store, organize and share recordings and 
 the client (this project) for Windows, macOS and Linux to do the actual recordings.
